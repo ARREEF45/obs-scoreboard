@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Combined Scoreboard Display</title>
+  <style>
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; overflow:hidden; background:transparent; }
+    .layer {
+      position:absolute; inset:0; opacity:0; visibility:hidden; pointer-events:none;
+      transition:opacity .35s ease,transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s linear .45s;
+    }
+    .layer iframe { display:block; width:100%; height:100%; border:0; background:transparent; }
+    .main-layer { transform:translateY(32px); }
+    .top-layer { transform:translateX(-32px); }
+    .penalty-layer { transform:translateY(-24px) scale(.97); }
+    .layer.visible {
+      opacity:1; visibility:visible; transform:translate(0,0);
+      transition:opacity .3s ease,transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s;
+    }
+  </style>
+</head>
+<body>
+  <div id="main-layer" class="layer main-layer visible">
+    <iframe src="display.html" title="Lower scoreboard"></iframe>
+  </div>
+  <div id="top-layer" class="layer top-layer">
+    <iframe src="display-top.html" title="Top scoreboard"></iframe>
+  </div>
+  <div id="penalty-layer" class="layer penalty-layer">
+    <iframe src="display-penalty.html" title="Penalty shootout"></iframe>
+  </div>
+
+  <script>
+    const channel = new BroadcastChannel('football_scoreboard');
+
+    function setVisible(id, visible) {
+      document.getElementById(id).classList.toggle('visible', Boolean(visible));
+    }
+
+    function render(data) {
+      if (!data || data.type === 'request-state') return;
+      const showPenalty = Boolean(data.showPenaltyDisplay);
+      setVisible('main-layer', data.showMainDisplay !== false && !showPenalty);
+      setVisible('top-layer', Boolean(data.showTopDisplay));
+      setVisible('penalty-layer', showPenalty);
+    }
+
+    channel.onmessage = event => render(event.data);
+    window.addEventListener('storage', event => {
+      if (event.key === 'football_scoreboard_state' && event.newValue) {
+        try { render(JSON.parse(event.newValue)); } catch (_) {}
+      }
+    });
+    try { render(JSON.parse(localStorage.getItem('football_scoreboard_state'))); } catch (_) {}
+    channel.postMessage({type:'request-state'});
+  </script>
+</body>
+</html>

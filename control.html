@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Scoreboard Control Panel</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap');
+    body {
+      font-family: 'Kanit', sans-serif;
+      background: #1e293b;
+      color: #f8fafc;
+      margin: 0;
+      padding: 12px;
+      font-size: 13px;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .card { background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155; }
+    h4 { margin: 0 0 8px 0; color: #38bdf8; font-size: 14px; }
+    label { display: block; margin-top: 6px; color: #94a3b8; font-size: 12px; }
+    input[type="text"], input[type="number"], select {
+      width: 100%; box-sizing: border-box; padding: 6px; border-radius: 4px;
+      border: 1px solid #334155; background: #1e293b; color: #fff; margin-top: 2px;
+      font-family: 'Kanit';
+    }
+    input[type="file"] {
+      width: 100%; box-sizing: border-box; padding: 4px; border-radius: 4px;
+      border: 1px dashed #334155; background: #1e293b; color: #94a3b8; margin-top: 2px; font-size: 11px;
+    }
+    .logo-option {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #1e293b;
+    }
+    .score-ctrl { display: flex; gap: 4px; margin-top: 6px; }
+    button {
+      flex: 1; padding: 6px; border: none; border-radius: 4px; background: #0284c7;
+      color: white; font-weight: bold; cursor: pointer; font-family: 'Kanit';
+    }
+    button:hover { background: #0369a1; }
+    button.btn-red { background: #ef4444; }
+    button.btn-red:hover { background: #dc2626; }
+    button.btn-green { background: #10b981; }
+    button.btn-green:hover { background: #059669; }
+    .timer-ctrl { display: flex; gap: 6px; margin-top: 8px; }
+    .custom-time { display: flex; gap: 6px; align-items: flex-end; margin-top: 8px; }
+    .custom-time > div { flex: 1; }
+    .custom-time button { flex: 0 0 120px; height: 33px; }
+    .display-switches { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .display-switch {
+      display:flex; align-items:center; gap:8px; margin:0; padding:9px 10px;
+      border:1px solid #334155; border-radius:5px; background:#1e293b; color:#f8fafc; cursor:pointer;
+    }
+    .display-switch input { width:17px; height:17px; margin:0; accent-color:#10b981; }
+    .penalty-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .penalty-team { padding:8px; border:1px solid #334155; border-radius:5px; background:#1e293b; }
+    .penalty-team strong { display:block; margin-bottom:6px; text-align:center; }
+    .penalty-result { min-height:24px; margin-bottom:6px; color:#cbd5e1; font-size:17px; letter-spacing:4px; text-align:center; }
+    .penalty-actions { display:flex; gap:5px; }
+    .card-header { display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; user-select:none; }
+    .card-header h4 { flex:1; margin:0; }
+    .collapse-button {
+      flex:0 0 28px; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center;
+      border:1px solid #334155; border-radius:50%; background:#1e293b; color:#7dd3fc;
+      font-family:Arial,sans-serif; font-size:16px; line-height:1;
+    }
+    .collapse-button:hover { background:#334155; }
+    .card-content { overflow:hidden; max-height:1200px; opacity:1; transition:max-height .28s ease,opacity .2s ease,margin .28s ease; }
+    .card.collapsed .card-content { max-height:0; opacity:0; margin:0; pointer-events:none; }
+    .card.collapsed .collapse-button { transform:rotate(-90deg); }
+    .collapse-button { transition:transform .22s ease,background .2s ease; }
+    .discipline-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .discipline-team { padding:8px; border:1px solid #334155; border-radius:5px; background:#1e293b; }
+    .discipline-team strong { display:block; margin-bottom:7px; text-align:center; }
+    .discipline-row { display:grid; grid-template-columns:62px 1fr; gap:6px; align-items:center; margin-top:5px; }
+    .discipline-label { display:flex; align-items:center; gap:6px; color:#cbd5e1; font-size:12px; }
+    .card-swatch { width:13px; height:18px; border-radius:2px; box-shadow:0 1px 3px rgba(0,0,0,.35); }
+    .card-swatch.yellow { background:#facc15; }
+    .card-swatch.red { background:#ef3340; }
+    .full-width { grid-column: span 2; }
+    .hidden { display: none; }
+    
+    /* Checkbox & Label Custom Style */
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: #f8fafc;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .checkbox-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #0284c7;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="grid">
+    <div class="card full-width">
+      <h4>การแสดงผลใน OBS</h4>
+      <div class="display-switches">
+        <label class="display-switch">
+          <input type="checkbox" id="show-main-display" checked onchange="toggleMainDisplay()">
+          แสดงสกอร์บอร์ดด้านล่าง
+        </label>
+        <label class="display-switch">
+          <input type="checkbox" id="show-top-display" onchange="updateAll()">
+          แสดงสกอร์บอร์ดด้านบน
+        </label>
+      </div>
+    </div>
+    <div class="card full-width">
+      <h4>ดวลจุดโทษ</h4>
+      <label class="display-switch" style="margin-bottom:8px;">
+        <input type="checkbox" id="show-penalty-display" onchange="togglePenaltyDisplay()">
+        แสดงกราฟิกดวลจุดโทษ
+      </label>
+      <div class="penalty-grid">
+        <div class="penalty-team">
+          <strong>ทีมเหย้า</strong>
+          <div id="home-penalty-result" class="penalty-result">—</div>
+          <div class="penalty-actions">
+            <button class="btn-green" onclick="addPenalty('home', true)">เข้า ✓</button>
+            <button class="btn-red" onclick="addPenalty('home', false)">ไม่เข้า ✕</button>
+            <button onclick="undoPenalty('home')">ย้อน</button>
+          </div>
+        </div>
+        <div class="penalty-team">
+          <strong>ทีมเยือน</strong>
+          <div id="away-penalty-result" class="penalty-result">—</div>
+          <div class="penalty-actions">
+            <button class="btn-green" onclick="addPenalty('away', true)">เข้า ✓</button>
+            <button class="btn-red" onclick="addPenalty('away', false)">ไม่เข้า ✕</button>
+            <button onclick="undoPenalty('away')">ย้อน</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn-red" style="margin-top:7px; width:100%;" onclick="resetPenalties()">รีเซ็ตผลจุดโทษทั้งหมด</button>
+    </div>
+    <!-- Home Team -->
+    <div class="card">
+      <h4>ทีมเหย้า (Home)</h4>
+      <label>ชื่อทีม</label>
+      <input type="text" id="home-name" value="HOME" oninput="updateAll()">
+      
+      <!-- Home Logo Selector -->
+      <div class="logo-option">
+        <label>แหล่งที่มาโลโก้</label>
+        <select id="home-logo-type" onchange="toggleLogoInput('home')">
+          <option value="url">ลิงก์ภายนอก (URL)</option>
+          <option value="file">อัปโหลดจากเครื่อง</option>
+        </select>
+
+        <div id="home-url-group">
+          <label>URL โลโก้</label>
+          <input type="text" id="home-logo-url" placeholder="https://example.com/logo.png" oninput="updateAll()">
+        </div>
+
+        <div id="home-file-group" class="hidden">
+          <label>เลือกไฟล์รูป (.png, .jpg, .svg)</label>
+          <input type="file" id="home-logo-file" accept="image/*" onchange="handleFileUpload('home')">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Away Team -->
+    <div class="card">
+      <h4>ทีมเยือน (Away)</h4>
+      <label>ชื่อทีม</label>
+      <input type="text" id="away-name" value="AWAY" oninput="updateAll()">
+      
+      <!-- Away Logo Selector -->
+      <div class="logo-option">
+        <label>แหล่งที่มาโลโก้</label>
+        <select id="away-logo-type" onchange="toggleLogoInput('away')">
+          <option value="url">ลิงก์ภายนอก (URL)</option>
+          <option value="file">อัปโหลดจากเครื่อง</option>
+        </select>
+
+        <div id="away-url-group">
+          <label>URL โลโก้</label>
+          <input type="text" id="away-logo-url" placeholder="https://example.com/logo.png" oninput="updateAll()">
+        </div>
+
+        <div id="away-file-group" class="hidden">
+          <label>เลือกไฟล์รูป (.png, .jpg, .svg)</label>
+          <input type="file" id="away-logo-file" accept="image/*" onchange="handleFileUpload('away')">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Score Control -->
+    <div class="card full-width">
+      <h4>ควบคุมสกอร์</h4>
+      <div class="grid">
+        <div>
+          <label style="text-align:center;">ทีมเหย้า</label>
+          <div class="score-ctrl">
+            <button onclick="changeScore('home', -1)">−</button>
+            <input type="number" id="home-score" value="0" min="0" style="text-align:center; font-size:20px; font-weight:bold;" onchange="updateAll()">
+            <button class="btn-green" onclick="changeScore('home', 1)">+</button>
+          </div>
+        </div>
+        <div>
+          <label style="text-align:center;">ทีมเยือน</label>
+          <div class="score-ctrl">
+            <button onclick="changeScore('away', -1)">−</button>
+            <input type="number" id="away-score" value="0" min="0" style="text-align:center; font-size:20px; font-weight:bold;" onchange="updateAll()">
+            <button class="btn-green" onclick="changeScore('away', 1)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <h4>ใบเหลืองและใบแดง</h4>
+      <div class="discipline-grid">
+        <div class="discipline-team">
+          <strong>ทีมเหย้า</strong>
+          <div class="discipline-row"><span class="discipline-label"><i class="card-swatch yellow"></i>เหลือง</span><div class="score-ctrl"><button onclick="changeDiscipline('home','yellow',-1)">−</button><input id="home-yellow" type="number" value="0" min="0" style="text-align:center" onchange="updateAll()"><button onclick="changeDiscipline('home','yellow',1)">+</button></div></div>
+          <div class="discipline-row"><span class="discipline-label"><i class="card-swatch red"></i>แดง</span><div class="score-ctrl"><button onclick="changeDiscipline('home','red',-1)">−</button><input id="home-red" type="number" value="0" min="0" style="text-align:center" onchange="updateAll()"><button class="btn-red" onclick="changeDiscipline('home','red',1)">+</button></div></div>
+        </div>
+        <div class="discipline-team">
+          <strong>ทีมเยือน</strong>
+          <div class="discipline-row"><span class="discipline-label"><i class="card-swatch yellow"></i>เหลือง</span><div class="score-ctrl"><button onclick="changeDiscipline('away','yellow',-1)">−</button><input id="away-yellow" type="number" value="0" min="0" style="text-align:center" onchange="updateAll()"><button onclick="changeDiscipline('away','yellow',1)">+</button></div></div>
+          <div class="discipline-row"><span class="discipline-label"><i class="card-swatch red"></i>แดง</span><div class="score-ctrl"><button onclick="changeDiscipline('away','red',-1)">−</button><input id="away-red" type="number" value="0" min="0" style="text-align:center" onchange="updateAll()"><button class="btn-red" onclick="changeDiscipline('away','red',1)">+</button></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timer Control -->
+    <div class="card full-width">
+      <h4>เวลาการแข่งขัน & ทดเวลา</h4>
+      <label>ช่วงการแข่งขัน</label>
+      <select id="period" onchange="updateAll()">
+        <option value="FIRST HALF">FIRST HALF</option>
+        <option value="HALF TIME">HALF TIME</option>
+        <option value="SECOND HALF">SECOND HALF</option>
+        <option value="EXTRA TIME">EXTRA TIME</option>
+        <option value="FULL TIME">FULL TIME</option>
+      </select>
+      <div style="display: flex; gap: 10px; align-items: flex-end;">
+        <div style="flex: 1;">
+          <label>เวลาปัจจุบัน (นาที:วินาที)</label>
+          <div style="font-size: 20px; font-weight: bold; color: #facc15;" id="timer-display">00:00</div>
+        </div>
+        <div style="flex: 1;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="show-added-time" onchange="toggleAddedTimeInput()">
+            แสดงทดเวลาเจ็บ
+          </label>
+          <input type="number" id="added-time" value="1" min="0" placeholder="เช่น 3" oninput="updateAll()">
+        </div>
+      </div>
+      <div class="timer-ctrl">
+        <button class="btn-green" onclick="startTimer()">เริ่ม / เล่นต่อ</button>
+        <button class="btn-red" onclick="pauseTimer()">หยุดชั่วคราว</button>
+        <button onclick="setQuickTime(45)">ครึ่งแรก (45')</button>
+        <button onclick="setQuickTime(90)">ครึ่งหลัง (90')</button>
+        <button onclick="resetTimer()">รีเซ็ต 00:00</button>
+      </div>
+      <div class="custom-time">
+        <div>
+          <label>กำหนดนาที</label>
+          <input type="number" id="custom-minutes" value="0" min="0" max="999">
+        </div>
+        <div>
+          <label>กำหนดวินาที</label>
+          <input type="number" id="custom-seconds" value="0" min="0" max="59">
+        </div>
+        <button onclick="setCustomTime()">ตั้งเวลา</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const channel = new BroadcastChannel('football_scoreboard');
+    let timerInterval = null;
+    let totalSeconds = 0;
+
+    const localLogos = {
+      home: '',
+      away: ''
+    };
+    const penalties = { home: [], away: [] };
+
+    function toggleMainDisplay() {
+      if (document.getElementById('show-main-display').checked) {
+        document.getElementById('show-penalty-display').checked = false;
+      }
+      updateAll();
+    }
+
+    function togglePenaltyDisplay() {
+      if (document.getElementById('show-penalty-display').checked) {
+        document.getElementById('show-main-display').checked = false;
+      }
+      updateAll();
+    }
+
+    function renderPenaltyControl() {
+      ['home', 'away'].forEach(team => {
+        const marks = penalties[team].map(result => result ? '✓' : '✕').join(' ');
+        document.getElementById(`${team}-penalty-result`).textContent = marks || '—';
+      });
+    }
+
+    function addPenalty(team, scored) {
+      penalties[team].push(Boolean(scored));
+      renderPenaltyControl();
+      updateAll();
+    }
+
+    function undoPenalty(team) {
+      penalties[team].pop();
+      renderPenaltyControl();
+      updateAll();
+    }
+
+    function resetPenalties() {
+      penalties.home.length = 0;
+      penalties.away.length = 0;
+      renderPenaltyControl();
+      updateAll();
+    }
+
+    function toggleLogoInput(team) {
+      const type = document.getElementById(`${team}-logo-type`).value;
+      const urlGroup = document.getElementById(`${team}-url-group`);
+      const fileGroup = document.getElementById(`${team}-file-group`);
+
+      if (type === 'url') {
+        urlGroup.classList.remove('hidden');
+        fileGroup.classList.add('hidden');
+      } else {
+        urlGroup.classList.add('hidden');
+        fileGroup.classList.remove('hidden');
+      }
+      updateAll();
+    }
+
+    function handleFileUpload(team) {
+      const fileInput = document.getElementById(`${team}-logo-file`);
+      const file = fileInput.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          localLogos[team] = e.target.result;
+          updateAll();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function getLogoSource(team) {
+      const type = document.getElementById(`${team}-logo-type`).value;
+      if (type === 'url') {
+        return document.getElementById(`${team}-logo-url`).value;
+      } else {
+        return localLogos[team];
+      }
+    }
+
+    function toggleAddedTimeInput() {
+      updateAll();
+    }
+
+    function updateAll() {
+      const showAddedTime = document.getElementById('show-added-time').checked;
+      const data = {
+        homeName: document.getElementById('home-name').value,
+        awayName: document.getElementById('away-name').value,
+        homeScore: document.getElementById('home-score').value,
+        awayScore: document.getElementById('away-score').value,
+        homeLogo: getLogoSource('home'),
+        awayLogo: getLogoSource('away'),
+        showAddedTime: showAddedTime,
+        addedTime: document.getElementById('added-time').value,
+        period: document.getElementById('period').value,
+        showMainDisplay: document.getElementById('show-main-display').checked,
+        showTopDisplay: document.getElementById('show-top-display').checked,
+        showPenaltyDisplay: document.getElementById('show-penalty-display').checked,
+        homePenalties: [...penalties.home],
+        awayPenalties: [...penalties.away],
+        homeYellow: Math.max(0, parseInt(document.getElementById('home-yellow').value, 10) || 0),
+        homeRed: Math.max(0, parseInt(document.getElementById('home-red').value, 10) || 0),
+        awayYellow: Math.max(0, parseInt(document.getElementById('away-yellow').value, 10) || 0),
+        awayRed: Math.max(0, parseInt(document.getElementById('away-red').value, 10) || 0),
+        timer: formatTime(totalSeconds)
+      };
+      try {
+        localStorage.setItem('football_scoreboard_state', JSON.stringify(data));
+      } catch (_) {}
+      channel.postMessage(data);
+    }
+
+    function changeScore(team, delta) {
+      const input = document.getElementById(`${team}-score`);
+      let val = parseInt(input.value) || 0;
+      val = Math.max(0, val + delta);
+      input.value = val;
+      updateAll();
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function startTimer() {
+      if (timerInterval) return;
+      timerInterval = setInterval(() => {
+        totalSeconds++;
+        document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+        updateAll();
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      totalSeconds = 0;
+      document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      updateAll();
+    }
+
+    function setQuickTime(minutes) {
+      totalSeconds = minutes * 60;
+      document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      updateAll();
+    }
+
+    function changeDiscipline(team, type, delta) {
+      const input = document.getElementById(`${team}-${type}`);
+      input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+      updateAll();
+    }
+
+    function setCustomTime() {
+      const minuteInput = document.getElementById('custom-minutes');
+      const secondInput = document.getElementById('custom-seconds');
+      const minutes = Math.max(0, Math.min(999, parseInt(minuteInput.value, 10) || 0));
+      const seconds = Math.max(0, Math.min(59, parseInt(secondInput.value, 10) || 0));
+      minuteInput.value = minutes;
+      secondInput.value = seconds;
+      totalSeconds = (minutes * 60) + seconds;
+      document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      updateAll();
+    }
+
+    function restoreState() {
+      try {
+        const data = JSON.parse(localStorage.getItem('football_scoreboard_state'));
+        if (!data) return;
+        document.getElementById('home-name').value = data.homeName ?? 'HOME';
+        document.getElementById('away-name').value = data.awayName ?? 'AWAY';
+        document.getElementById('home-score').value = data.homeScore ?? 0;
+        document.getElementById('away-score').value = data.awayScore ?? 0;
+        document.getElementById('home-logo-url').value = data.homeLogo ?? '';
+        document.getElementById('away-logo-url').value = data.awayLogo ?? '';
+        document.getElementById('show-added-time').checked = Boolean(data.showAddedTime);
+        document.getElementById('added-time').value = data.addedTime || 1;
+        document.getElementById('period').value = data.period || 'FIRST HALF';
+        document.getElementById('show-main-display').checked = data.showMainDisplay !== false;
+        document.getElementById('show-top-display').checked = Boolean(data.showTopDisplay);
+        document.getElementById('show-penalty-display').checked = Boolean(data.showPenaltyDisplay);
+        if (document.getElementById('show-penalty-display').checked) {
+          document.getElementById('show-main-display').checked = false;
+        }
+        penalties.home.push(...(Array.isArray(data.homePenalties) ? data.homePenalties.map(Boolean) : []));
+        penalties.away.push(...(Array.isArray(data.awayPenalties) ? data.awayPenalties.map(Boolean) : []));
+        renderPenaltyControl();
+        document.getElementById('home-yellow').value = Math.max(0, Number(data.homeYellow) || 0);
+        document.getElementById('home-red').value = Math.max(0, Number(data.homeRed) || 0);
+        document.getElementById('away-yellow').value = Math.max(0, Number(data.awayYellow) || 0);
+        document.getElementById('away-red').value = Math.max(0, Number(data.awayRed) || 0);
+        const parts = String(data.timer || '00:00').split(':').map(Number);
+        totalSeconds = (parts[0] || 0) * 60 + (parts[1] || 0);
+        document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      } catch (_) {}
+    }
+
+    function initializeCollapsibleCards() {
+      document.querySelectorAll('.card').forEach((card, index) => {
+        const title = card.querySelector(':scope > h4');
+        if (!title || card.querySelector(':scope > .card-header')) return;
+
+        const header = document.createElement('div');
+        header.className = 'card-header';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'collapse-button';
+        button.innerHTML = '&#9662;';
+        button.setAttribute('aria-label', 'ย่อหรือขยายส่วนนี้');
+
+        title.before(header);
+        header.append(title, button);
+        const content = document.createElement('div');
+        content.className = 'card-content';
+        while (header.nextSibling) content.appendChild(header.nextSibling);
+        card.appendChild(content);
+
+        const storageKey = `scoreboard_control_section_${index}`;
+        try {
+          if (localStorage.getItem(storageKey) === 'collapsed') card.classList.add('collapsed');
+        } catch (_) {}
+
+        header.addEventListener('click', () => {
+          card.classList.toggle('collapsed');
+          const isCollapsed = card.classList.contains('collapsed');
+          button.setAttribute('aria-expanded', String(!isCollapsed));
+          try { localStorage.setItem(storageKey, isCollapsed ? 'collapsed' : 'expanded'); } catch (_) {}
+        });
+        button.setAttribute('aria-expanded', String(!card.classList.contains('collapsed')));
+      });
+    }
+
+    channel.onmessage = (event) => {
+      if (event.data && event.data.type === 'request-state') updateAll();
+    };
+
+    window.onload = () => {
+      initializeCollapsibleCards();
+      restoreState();
+      updateAll();
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Penalty Shootout</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;800&display=swap');
+    :root { --navy:#061643; --blue:#123ca6; --red:#ed1745; --green:#16c784; }
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; overflow:hidden; background:transparent; }
+    body { font-family:'Kanit',sans-serif; color:#fff; }
+    .panel {
+      position:absolute; left:50%; bottom:10%; transform:translateX(-50%); width:min(980px,88vw);
+      filter:drop-shadow(0 8px 12px rgba(0,0,0,.42));
+    }
+    .title {
+      width:max-content; margin:0 auto -1px; padding:6px 28px; background:var(--red);
+      font-size:16px; font-weight:800; letter-spacing:1px; transform:skewX(-8deg);
+    }
+    .title span { display:block; transform:skewX(8deg); }
+    .rows { overflow:hidden; border-radius:7px; border:1px solid rgba(255,255,255,.2); }
+    .team-row {
+      display:grid; grid-template-columns:68px minmax(190px,1fr) 86px minmax(280px,1.3fr);
+      align-items:center; min-height:80px; padding:7px 24px;
+      background:linear-gradient(105deg,var(--navy),var(--blue) 58%,#07184d);
+      box-shadow:inset 0 1px rgba(255,255,255,.14);
+    }
+    .team-row + .team-row { border-top:1px solid rgba(255,255,255,.2); }
+    .logo { width:60px; height:60px; padding:4px; border:2px solid #fff; border-radius:50%; object-fit:contain; background:#fff; }
+    .name { padding:0 18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:23px; font-weight:600; text-transform:uppercase; }
+    .total { height:64px; display:flex; align-items:center; justify-content:center; background:linear-gradient(#fff,#e9edf5); color:#07102e; font-size:44px; font-weight:800; }
+    .kicks { display:flex; justify-content:flex-end; gap:11px; padding-left:22px; }
+    .kick {
+      width:27px; height:27px; display:flex; align-items:center; justify-content:center;
+      border:2px solid rgba(255,255,255,.65); border-radius:50%; font:800 16px Arial,sans-serif;
+    }
+    .kick.goal { border-color:#8ff0c7; background:var(--green); }
+    .kick.miss { border-color:#ff9caf; background:var(--red); }
+    .kick.pending { background:rgba(255,255,255,.1); color:transparent; }
+    @media (max-width:900px) {
+      .panel { width:92vw; }
+      .team-row { grid-template-columns:56px minmax(120px,1fr) 68px minmax(190px,1fr); padding-inline:14px; }
+      .logo { width:50px; height:50px; }
+      .name { padding-inline:10px; font-size:18px; }
+      .total { height:56px; font-size:38px; }
+      .kicks { gap:6px; padding-left:10px; }
+      .kick { width:21px; height:21px; font-size:12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="title"><span>ดวลจุดโทษ</span></div>
+    <div class="rows">
+      <div class="team-row">
+        <img id="home-logo" class="logo" alt="Home logo"><div id="home-name" class="name">HOME</div>
+        <div id="home-total" class="total">0</div><div id="home-kicks" class="kicks"></div>
+      </div>
+      <div class="team-row">
+        <img id="away-logo" class="logo" alt="Away logo"><div id="away-name" class="name">AWAY</div>
+        <div id="away-total" class="total">0</div><div id="away-kicks" class="kicks"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const channel = new BroadcastChannel('football_scoreboard');
+    const blankLogo = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23071643'/%3E%3C/svg%3E";
+    document.getElementById('home-logo').src = blankLogo;
+    document.getElementById('away-logo').src = blankLogo;
+
+    function renderKicks(team, results) {
+      const values = Array.isArray(results) ? results : [];
+      const count = Math.max(5, values.length);
+      const container = document.getElementById(`${team}-kicks`);
+      container.replaceChildren();
+      for (let index = 0; index < count; index++) {
+        const mark = document.createElement('span');
+        const completed = index < values.length;
+        mark.className = `kick ${completed ? (values[index] ? 'goal' : 'miss') : 'pending'}`;
+        mark.textContent = completed ? (values[index] ? '✓' : '✕') : '•';
+        container.appendChild(mark);
+      }
+      document.getElementById(`${team}-total`).textContent = values.filter(Boolean).length;
+    }
+
+    function render(data) {
+      if (!data || data.type === 'request-state') return;
+      document.getElementById('home-name').textContent = data.homeName || 'HOME';
+      document.getElementById('away-name').textContent = data.awayName || 'AWAY';
+      if (data.homeLogo) document.getElementById('home-logo').src = data.homeLogo;
+      if (data.awayLogo) document.getElementById('away-logo').src = data.awayLogo;
+      renderKicks('home', data.homePenalties);
+      renderKicks('away', data.awayPenalties);
+    }
+    channel.onmessage = event => render(event.data);
+    window.addEventListener('storage', event => {
+      if (event.key === 'football_scoreboard_state' && event.newValue) {
+        try { render(JSON.parse(event.newValue)); } catch (_) {}
+      }
+    });
+    try { render(JSON.parse(localStorage.getItem('football_scoreboard_state'))); } catch (_) {}
+    channel.postMessage({type:'request-state'});
+  </script>
+</body>
+</html>

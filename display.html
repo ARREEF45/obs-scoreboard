@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scoreboard Display</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;800&display=swap');
+    :root { --navy:#061643; --blue:#123ca6; --blue-bright:#1a55d6; --red:#ed1745; --ink:#06112f; --gold:#ffd447; }
+    * { box-sizing: border-box; }
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:transparent; }
+    body { font-family:'Kanit',sans-serif; color:#fff; }
+    .stage { position:relative; width:100vw; height:100vh; }
+    .scoreboard {
+      position:absolute; left:50%; bottom:10%; transform:translateX(-50%);
+      display:grid; grid-template-columns:minmax(300px,430px) 82px 170px 82px minmax(300px,430px);
+      align-items:center; width:min(1180px,94vw); height:82px;
+      filter:drop-shadow(0 8px 12px rgba(0,0,0,.42));
+      animation:scoreboard-in .55s cubic-bezier(.2,.85,.25,1) both;
+    }
+    @keyframes scoreboard-in { from { opacity:0; transform:translate(-50%,24px) scale(.97); } to { opacity:1; transform:translate(-50%,0) scale(1); } }
+    .team {
+      position:relative; display:flex; align-items:center; height:66px;
+      background:linear-gradient(110deg,var(--navy),var(--blue) 55%,#071b5e);
+      border-bottom:4px solid var(--red); overflow:visible;
+      box-shadow:inset 0 1px rgba(255,255,255,.16), inset 0 -8px 18px rgba(0,0,0,.16);
+    }
+    .team.home { padding:0 32px 0 86px; }
+    .team.away { padding:0 86px 0 32px; justify-content:flex-end; }
+    .team::after { content:""; position:absolute; inset:0; opacity:.16; background:linear-gradient(120deg,transparent 0 36%,#fff 37%,transparent 39% 72%,#5c88ff 73%,transparent 75%); pointer-events:none; }
+    .team-logo {
+      position:absolute; z-index:3; width:92px; height:92px; object-fit:contain;
+      border:3px solid #fff; border-radius:50%; padding:5px; background:#f7f9ff;
+      box-shadow:0 0 0 3px var(--blue),0 4px 10px rgba(0,0,0,.45);
+    }
+    .home .team-logo { left:-20px; }
+    .away .team-logo { right:-20px; }
+    .team-name { position:relative; z-index:2; width:100%; font-size:23px; font-weight:600; letter-spacing:.7px; text-align:center; text-transform:uppercase; text-shadow:0 2px 2px rgba(0,0,0,.3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .discipline { position:absolute; z-index:7; top:-25px; display:flex; gap:5px; }
+    .home .discipline { right:12px; }
+    .away .discipline { left:12px; }
+    .discipline-badge { display:none; align-items:center; gap:4px; min-width:31px; height:22px; padding:2px 6px; border-radius:3px; background:#07102e; font:800 13px Arial,sans-serif; box-shadow:0 2px 5px rgba(0,0,0,.35); }
+    .discipline-badge::before { content:""; width:9px; height:14px; border-radius:1px; }
+    .discipline-badge.yellow::before { background:#facc15; }
+    .discipline-badge.red::before { background:#ef3340; }
+    .score-box {
+      position:relative; z-index:4; display:flex; align-items:center; justify-content:center;
+      width:82px; height:82px; padding:0 3px;
+      background:linear-gradient(#fff,#e9edf5); color:var(--ink); font-size:57px; line-height:1; font-weight:800;
+      box-shadow:inset 0 0 0 1px rgba(5,15,50,.14), inset 0 -5px 10px rgba(4,17,55,.06);
+    }
+    .penalty-score {
+      position:absolute; left:50%; top:calc(100% + 5px); transform:translateX(-50%);
+      display:none; min-width:64px; padding:3px 7px; border-radius:3px;
+      background:linear-gradient(135deg,#b90f32,var(--red)); color:#fff;
+      font-family:Arial,sans-serif; font-size:13px; line-height:18px; font-weight:800; letter-spacing:.4px;
+      text-align:center; white-space:nowrap; box-shadow:0 3px 6px rgba(0,0,0,.32);
+    }
+    .center-panel {
+      position:relative; z-index:2; height:76px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background:linear-gradient(135deg,var(--navy),#12327f 50%,var(--navy)); border-inline:2px solid rgba(255,255,255,.14);
+      box-shadow:inset 0 1px rgba(255,255,255,.14);
+    }
+    .center-panel::before { content:""; position:absolute; inset:0; opacity:.13; background:repeating-linear-gradient(45deg,transparent 0 10px,#fff 11px 12px); }
+    .versus-row { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; }
+    .vs-mark {
+      position:relative; transform:translateY(-7px) skewX(-7deg);
+      font-family:Arial Black,Arial,sans-serif; font-size:48px; line-height:.88; font-weight:900; letter-spacing:-6px;
+      color:#fff; padding-right:6px; text-shadow:0 4px 6px rgba(0,0,0,.48),0 0 13px rgba(63,124,255,.65);
+    }
+    .vs-mark::after {
+      content:""; position:absolute; left:7px; right:0; bottom:-7px; height:4px;
+      background:linear-gradient(90deg,transparent,var(--red) 22% 82%,transparent); box-shadow:0 0 7px rgba(237,23,69,.75);
+    }
+    .period {
+      position:absolute; z-index:6; left:50%; top:calc(100% - 4px); transform:translateX(-50%);
+      min-width:116px; padding:2px 12px; background:linear-gradient(#fff,#e8ebf1); color:#11182f; border-top:3px solid var(--red);
+      font-family:Arial,sans-serif; font-size:13px; line-height:20px; font-weight:800; letter-spacing:.55px; text-align:center; white-space:nowrap;
+      box-shadow:0 4px 7px rgba(0,0,0,.28);
+    }
+    .goal-alert {
+      position:absolute; z-index:30; inset:0; width:100%; transform:none;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      min-width:0; height:82px; padding:7px 42px; opacity:0; pointer-events:none;
+      overflow:hidden;
+      background:linear-gradient(105deg,#07185d,#164bd0 42%,#7719b8 76%,#151066);
+      border-block:2px solid rgba(255,255,255,.85);
+      filter:drop-shadow(0 8px 12px rgba(0,0,0,.45));
+    }
+    .goal-alert::before {
+      content:""; position:absolute; z-index:4; top:-15%; bottom:-15%; left:-38%; width:38%;
+      background:linear-gradient(100deg,transparent 0 8%,rgba(255,255,255,.88) 20%,#fff 48%,rgba(215,228,255,.9) 72%,transparent 92%);
+      box-shadow:25px 0 32px rgba(255,255,255,.65); opacity:0; transform:skewX(-12deg); pointer-events:none;
+    }
+    .goal-alert::after {
+      content:""; position:absolute; inset:-30%; z-index:1;
+      background:
+        radial-gradient(circle at 25% 50%,rgba(9,206,255,.65),transparent 24%),
+        radial-gradient(circle at 76% 48%,rgba(246,28,199,.72),transparent 28%),
+        repeating-linear-gradient(58deg,rgba(255,255,255,.28) 0 2px,transparent 2px 30px),
+        repeating-linear-gradient(-58deg,rgba(255,255,255,.22) 0 2px,transparent 2px 34px);
+      transform-origin:50% 15%;
+      animation:goal-net .38s ease-in-out infinite alternate;
+    }
+    .goal-title { position:relative; z-index:2; font-family:Arial Black,Arial,sans-serif; font-size:46px; line-height:1; font-weight:900; letter-spacing:-1px; text-shadow:0 3px 8px rgba(0,0,0,.45); }
+    .goal-alert.play { animation:goal-main 2.8s cubic-bezier(.3,.75,.2,1) both; }
+    .goal-alert.play::before { animation:goal-beam 2.8s ease-in-out both; }
+    .goal-alert.play .goal-title { animation:goal-word 2.8s ease-in-out both; }
+    @keyframes goal-main {
+      0% { opacity:1; clip-path:inset(0 100% 0 0); }
+      30%,72% { opacity:1; clip-path:inset(0 0 0 0); }
+      100% { opacity:1; clip-path:inset(0 100% 0 0); }
+    }
+    @keyframes goal-beam { 0% { left:-38%; opacity:0; } 5% { opacity:1; } 30% { left:100%; opacity:1; } 34%,70% { opacity:0; } 74% { left:100%; opacity:1; } 96% { opacity:1; } 100% { left:-38%; opacity:0; } }
+    @keyframes goal-word { 0%,8% { opacity:0; clip-path:inset(0 100% 0 0); } 35%,72% { opacity:1; clip-path:inset(0 0 0 0); } 100% { opacity:0; clip-path:inset(0 100% 0 0); } }
+    @keyframes goal-net { from { transform:perspective(420px) rotateX(8deg) translateX(-5px) scale(1.01); } to { transform:perspective(420px) rotateX(-5deg) translateX(5px) scale(1.07,1.12); } }
+    @media (max-width:850px) {
+      .scoreboard { grid-template-columns:minmax(170px,1fr) 58px 118px 58px minmax(170px,1fr); }
+      .score-box { width:58px; font-size:41px; }
+      .team-name { font-size:15px; }
+      .team-logo { width:68px; height:68px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="scoreboard">
+      <div id="goal-alert" class="goal-alert"><div class="goal-title">GOAL</div></div>
+      <div class="team home">
+        <img id="home-logo" class="team-logo" alt="Home logo">
+        <span id="home-name" class="team-name">HOME</span>
+        <div class="discipline"><span id="home-yellow" class="discipline-badge yellow"></span><span id="home-red" class="discipline-badge red"></span></div>
+      </div>
+      <div class="score-box"><span id="home-score">0</span><span id="home-penalty-score" class="penalty-score"></span></div>
+      <div class="center-panel">
+        <div class="versus-row"><span class="vs-mark">VS</span></div>
+        <div id="period" class="period">FIRST HALF</div>
+      </div>
+      <div class="score-box"><span id="away-score">0</span><span id="away-penalty-score" class="penalty-score"></span></div>
+      <div class="team away">
+        <span id="away-name" class="team-name">AWAY</span>
+        <img id="away-logo" class="team-logo" alt="Away logo">
+        <div class="discipline"><span id="away-yellow" class="discipline-badge yellow"></span><span id="away-red" class="discipline-badge red"></span></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const channel = new BroadcastChannel('football_scoreboard');
+    const blankLogo = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23071d68'/%3E%3Cpath d='M50 20l9 18 20 3-14 14 3 20-18-9-18 9 3-20-14-14 20-3z' fill='white'/%3E%3C/svg%3E";
+    document.getElementById('home-logo').src = blankLogo;
+    document.getElementById('away-logo').src = blankLogo;
+    let lastScores = null;
+    let goalTimer = null;
+
+    function showGoal() {
+      const alert = document.getElementById('goal-alert');
+      alert.classList.remove('play');
+      void alert.offsetWidth;
+      alert.classList.add('play');
+      clearTimeout(goalTimer);
+      goalTimer = setTimeout(() => alert.classList.remove('play'), 2900);
+    }
+
+    function render(data) {
+      if (!data || data.type === 'request-state') return;
+      const nextScores = [Number(data.homeScore) || 0, Number(data.awayScore) || 0];
+      if (lastScores) {
+        if (nextScores[0] > lastScores[0]) showGoal(data.homeName);
+        else if (nextScores[1] > lastScores[1]) showGoal(data.awayName);
+      }
+      lastScores = nextScores;
+      const setText = (id, value) => { if (value !== undefined) document.getElementById(id).textContent = value; };
+      setText('home-name', data.homeName);
+      setText('away-name', data.awayName);
+      setText('home-score', data.homeScore);
+      setText('away-score', data.awayScore);
+      const homePenalties = Array.isArray(data.homePenalties) ? data.homePenalties : [];
+      const awayPenalties = Array.isArray(data.awayPenalties) ? data.awayPenalties : [];
+      const showPenaltyScores = homePenalties.length > 0 || awayPenalties.length > 0;
+      const homePenaltyScore = document.getElementById('home-penalty-score');
+      const awayPenaltyScore = document.getElementById('away-penalty-score');
+      homePenaltyScore.textContent = `PEN ${homePenalties.filter(Boolean).length}`;
+      awayPenaltyScore.textContent = `PEN ${awayPenalties.filter(Boolean).length}`;
+      homePenaltyScore.style.display = showPenaltyScores ? 'block' : 'none';
+      awayPenaltyScore.style.display = showPenaltyScores ? 'block' : 'none';
+      [['home-yellow', data.homeYellow], ['home-red', data.homeRed], ['away-yellow', data.awayYellow], ['away-red', data.awayRed]].forEach(([id, value]) => {
+        const badge = document.getElementById(id);
+        const count = Math.max(0, Number(value) || 0);
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline-flex' : 'none';
+      });
+      if (data.homeLogo) document.getElementById('home-logo').src = data.homeLogo;
+      if (data.awayLogo) document.getElementById('away-logo').src = data.awayLogo;
+      setText('period', data.period || 'FIRST HALF');
+    }
+    channel.onmessage = event => render(event.data);
+    window.addEventListener('storage', event => {
+      if (event.key === 'football_scoreboard_state' && event.newValue) {
+        try { render(JSON.parse(event.newValue)); } catch (_) {}
+      }
+    });
+    try { render(JSON.parse(localStorage.getItem('football_scoreboard_state'))); } catch (_) {}
+    channel.postMessage({type:'request-state'});
+  </script>
+</body>
+</html>
