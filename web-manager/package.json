@@ -1,0 +1,27 @@
+{
+  "name": "web-manager",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "npm run build && node tests/browser.e2e.js",
+    "format": "prettier --write src tests index.html vite.config.js package.json README.md"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "playwright-core": "^1.63.0",
+    "prettier": "^3.9.9",
+    "vite": "^8.3.2"
+  },
+  "private": true
+}
