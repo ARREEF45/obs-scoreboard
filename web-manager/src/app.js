@@ -1,4 +1,5 @@
 import "./style.css";
+import { recoveryRequested, recoveryForm, requestRecovery } from "./recovery.js";
 import {
   client,
   config,
@@ -847,6 +848,14 @@ function login() {
   const setup = !client;
   $("#app").innerHTML =
     `<div class="auth panel"><div class="brand">สนาม<span style="color:#199369">.</span></div><h2>${setup ? "เชื่อมต่อฐานข้อมูล" : "เข้าสู่ระบบจัดการแข่งขัน"}</h2><p>${setup ? "ใส่ Project URL และ Publishable key จาก Supabase หลังติดตั้งตารางตามคู่มือ" : "ใช้บัญชีเดียวกันบนคอมและมือถือเพื่อจัดการข้อมูลชุดเดียวกัน"}</p><form id="auth-form">${setup ? input("url", "Supabase Project URL", "", "url", "required") + input("key", "Publishable key", "", "text", "required") : input("email", "อีเมล", "", "email", 'required autocomplete="username"') + input("password", "รหัสผ่าน", "", "password", 'required autocomplete="current-password"')}<button type="submit" class="primary">${setup ? "บันทึกการเชื่อมต่อ" : "เข้าสู่ระบบ"}</button><p class="auth-error" id="auth-error"></p></form><small>${setup ? "ห้ามใช้ service-role หรือ secret key ในหน้าเว็บ" : "บัญชีผู้ใช้สร้างผ่าน Supabase Authentication โดยผู้ดูแล"}</small></div>`;
+  if (!setup) {
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.textContent = "ลืมรหัสผ่าน / ตั้งรหัสผ่านใหม่";
+    reset.id = "forgot-password";
+    reset.onclick = () => requestRecovery(client, login);
+    $("#auth-form").after(reset);
+  }
   $("#auth-form").onsubmit = (e) => {
     e.preventDefault();
     perform(async () => {
@@ -889,7 +898,24 @@ async function start() {
     login();
     return;
   }
+  let recovering = recoveryRequested();
+  client.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      recovering = true;
+      clearInterval(timer);
+      recoveryForm(client, login, !!session);
+    }
+    if (event === "SIGNED_OUT") {
+      user = null;
+      clearInterval(timer);
+      login();
+    }
+  });
   const { data } = await client.auth.getSession();
+  if (recovering) {
+    recoveryForm(client, login, !!data.session);
+    return;
+  }
   user = data.session?.user;
   if (!user) {
     login();
@@ -902,12 +928,5 @@ async function start() {
     render();
     notify("โหลดฐานข้อมูลไม่สำเร็จ: " + message(e), true);
   }
-  client.auth.onAuthStateChange((event, session) => {
-    if (event === "SIGNED_OUT") {
-      user = null;
-      clearInterval(timer);
-      login();
-    }
-  });
 }
 start();
