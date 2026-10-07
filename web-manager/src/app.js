@@ -1,4 +1,5 @@
 import "./style.css";
+import { clockText } from './match-clock.js';
 import { recoveryRequested, recoveryForm, requestRecovery } from "./recovery.js";
 import {
   client,
@@ -294,7 +295,7 @@ function matchContent() {
   const events = db.events
     .filter((e) => e.match_id === m.id)
     .sort((a, b) => a.minute - b.minute || a.added - b.added);
-  return `${m.obs_synced_at ? `<p class="form-help">${escape(broadcastLabel)} ? ${date(m.obs_synced_at)}<br>${escape(broadcastNote)}</p>` : ""}<div class="toolbar">${button("← โปรแกรมการแข่งขัน", "nav", "matches")}<div class="actions">${badge(m.status)}${button("แก้ไขเวลา / สถานะ", "edit-matches", m.id)}${button("ดาวน์โหลดแมตช์ OBS", "obs", m.id)}</div></div><div class="match-head"><div>${crest(m.home_id)}${escape(team(m.home_id)?.name)}</div><div><span class="score">${s.home} : ${s.away}</span><div>${date(m.kickoff)}</div><small>${escape(m.venue)}</small></div><div>${crest(m.away_id)}${escape(team(m.away_id)?.name)}</div></div><div class="tabs">${button("เหตุการณ์ / ผลการแข่งขัน", "tab", "events", tab === "events" ? "active" : "")}${button("ตัวจริง / ตัวสำรอง", "tab", "lineups", tab === "lineups" ? "active" : "")}</div>${
+  return `${m.obs_synced_at ? `<p class="form-help">${escape(broadcastLabel)} ? ${date(m.obs_synced_at)}<br>${escape(broadcastNote)}</p>` : ""}<div class="toolbar">${button("← โปรแกรมการแข่งขัน", "nav", "matches")}<div class="actions">${badge(m.status)}${button("แก้ไขเวลา / สถานะ", "edit-matches", m.id)}${button("ดาวน์โหลดแมตช์ OBS", "obs", m.id)}</div></div><div class="match-head"><div>${crest(m.home_id)}${escape(team(m.home_id)?.name)}</div><div><span class="score">${s.home} : ${s.away}</span><div class="match-clock" data-match-clock="${escape(m.id)}"></div><div>${date(m.kickoff)}</div><small>${escape(m.venue)}</small></div><div>${crest(m.away_id)}${escape(team(m.away_id)?.name)}</div></div><div class="tabs">${button("เหตุการณ์ / ผลการแข่งขัน", "tab", "events", tab === "events" ? "active" : "")}${button("ตัวจริง / ตัวสำรอง", "tab", "lineups", tab === "lineups" ? "active" : "")}</div>${
     tab === "lineups"
       ? `<div class="two">${[m.home_id, m.away_id]
           .map(
@@ -932,3 +933,6 @@ async function start() {
   }
 }
 start();
+
+function paintMatchClocks(){document.querySelectorAll("[data-match-clock]").forEach(node=>{const m=db.matches.find(m=>m.id===node.dataset.matchClock);if(!m)return;const text=clockText(m.obs_result?.clock,m.obs_synced_at);node.textContent=text.time+" | "+text.label;});}
+setInterval(paintMatchClocks,1000);
