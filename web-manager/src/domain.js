@@ -1,4 +1,7 @@
 export function score(match, events) {
+  if (Number.isInteger(match.obs_home_score) && Number.isInteger(match.obs_away_score)) {
+    return { home: match.obs_home_score, away: match.obs_away_score };
+  }
   const result = { home: 0, away: 0 };
   for (const event of events.filter((e) => e.match_id === match.id)) {
     if (!["goal", "own_goal"].includes(event.kind)) continue;

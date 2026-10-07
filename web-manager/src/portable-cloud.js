@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { matchPatch, assertCanLink } from './portable-data.js';
+import { makeResultSender, resultOf } from './portable-results.js';
 const WEB = 'https://arreef45.github.io/obs-scoreboard/manager/';
 const client = createClient('https://ascxzymhwswfwpjwzcdx.supabase.co','sb_publishable_dk_I0UMWyE12KKFIzt7Xvg_Y46QOXsz', {auth:{storageKey:'obs-cloud-auth',detectSessionInUrl:false}});
 const el = (tag, text, parent) => {const n=document.createElement(tag);if(text)n.textContent=text;parent?.append(n);return n;};
@@ -12,6 +13,30 @@ function link(parent,text,url) {const a=el('a',text,parent);a.href=url;a.target=
 async function control() {
   const root=document.querySelector('#cloud-panel');if(!root)return;
   const body=el('div','',root);const s=el('p','',root);s.id='cloud-status';
+  const resultStatus=el('p','ส่งผลอัตโนมัติ: รอเลือกนัดจากเว็บ',root);
+  resultStatus.id='cloud-result-status';
+  const sender=makeResultSender({storage:localStorage,report:text=>resultStatus.textContent=text,send:async(id,version,payload)=>{
+    const {data,error}=await client.rpc('fm_sync_broadcast_result',{p_match:id,p_expected_version:version,p_result:payload});
+    if(error)throw error;
+    const latest=await local();
+    if(latest.cloudMatchId===id && (!latest.cloudResultVersion || latest.cloudResultVersion<data.version)){
+      await local('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cloudResultVersion:data.version,cloudResultBaseline:JSON.stringify(payload)})});
+    }
+    return data;
+  }});
+  let sending=false;
+  async function syncResults(){if(sending)return;sending=true;try{const {data}=await client.auth.getSession();if(!data.session)return;const current=await local();sender.observe(data.session.user.id,current);await sender.flush(data.session.user.id);}catch(e){resultStatus.textContent='รอส่งผล: '+e.message;}finally{sending=false;}}
+  setInterval(syncResults,3000);
+  window.addEventListener('online',syncResults);
+  button('ลองส่งผลอีกครั้ง',root,syncResults);
+  button('ยืนยันใช้ผลจาก Control แทนผลบนเว็บ',root,async()=>{
+    const {data:auth}=await client.auth.getSession();if(!auth.session)throw Error('เข้าสู่ระบบเว็บก่อน');
+    const current=await local();if(!current.cloudMatchId||current.cloudOwnerId!==auth.session.user.id)throw Error('ดึงนัดด้วยบัญชีนี้ก่อน');
+    if(!confirm('ใช้สกอร์และสถานะจาก Control แทนผลของนัดนี้บนเว็บ?'))return;
+    const {data:remote,error}=await client.from('fm_matches').select('version').eq('id',current.cloudMatchId).single();if(error)throw error;
+    const latest=await local();if(latest.cloudMatchId!==current.cloudMatchId)throw Error('นัดเปลี่ยนแล้ว กรุณาลองใหม่');
+    sender.resolve(auth.session.user.id,latest,remote.version);await sender.flush(auth.session.user.id);
+  });
   link(root,'จัดการทีม นักเตะ และโปรแกรมแข่งขันบนเว็บ',WEB);
   async function login() {
     body.replaceChildren();el('p','เข้าสู่ระบบด้วยบัญชีเดียวกับเว็บจัดการทีม',body);
@@ -40,6 +65,11 @@ async function control() {
       for(const t of freshTeams){if(!t.logo_path)continue;const {data,error}=await client.storage.from('fm-logos').download(t.logo_path);if(error)throw Error('ดาวน์โหลดโลโก้ '+t.name+' ไม่สำเร็จ: '+error.message);logos[t.id]=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(data);});}
       const latest=await local();assertCanLink(latest,m.id);
       const patch=matchPatch(m,freshTeams,players,lineups,logos,latest);
+      if(latest.cloudMatchId!==m.id || !latest.cloudResultVersion){
+        const {data:auth}=await client.auth.getSession();
+        const {data:freshMatch,error}=await client.from('fm_matches').select('version').eq('id',m.id).single();if(error)throw error;
+        Object.assign(patch,{cloudOwnerId:auth.session.user.id,cloudResultVersion:freshMatch.version,cloudResultBaseline:JSON.stringify(resultOf(latest))});
+      }
       await window.applyCloudMatch(patch);
       status('ดึงข้อมูลแล้ว: '+patch.homeName+' — '+patch.awayName+' · จัดตัวจริง–สำรองได้ใน “จัดรายชื่อนัดนี้”');
     });

@@ -286,13 +286,15 @@ function content() {
   return "";
 }
 function matchContent() {
+  const broadcastLabel = 'ผลจาก Control / OBS';
+  const broadcastNote = 'สกอร์นี้มาจากการถ่ายทอดสด สถิตินักเตะยังอ้างอิงเหตุการณ์ที่บันทึกบนเว็บ';
   const m = match();
   if (!m) return '<div class="empty">ไม่พบแมตช์</div>';
   const s = score(m, db.events);
   const events = db.events
     .filter((e) => e.match_id === m.id)
     .sort((a, b) => a.minute - b.minute || a.added - b.added);
-  return `<div class="toolbar">${button("← โปรแกรมการแข่งขัน", "nav", "matches")}<div class="actions">${badge(m.status)}${button("แก้ไขเวลา / สถานะ", "edit-matches", m.id)}${button("ดาวน์โหลดแมตช์ OBS", "obs", m.id)}</div></div><div class="match-head"><div>${crest(m.home_id)}${escape(team(m.home_id)?.name)}</div><div><span class="score">${s.home} : ${s.away}</span><div>${date(m.kickoff)}</div><small>${escape(m.venue)}</small></div><div>${crest(m.away_id)}${escape(team(m.away_id)?.name)}</div></div><div class="tabs">${button("เหตุการณ์ / ผลการแข่งขัน", "tab", "events", tab === "events" ? "active" : "")}${button("ตัวจริง / ตัวสำรอง", "tab", "lineups", tab === "lineups" ? "active" : "")}</div>${
+  return `${m.obs_synced_at ? `<p class="form-help">${escape(broadcastLabel)} ? ${date(m.obs_synced_at)}<br>${escape(broadcastNote)}</p>` : ""}<div class="toolbar">${button("← โปรแกรมการแข่งขัน", "nav", "matches")}<div class="actions">${badge(m.status)}${button("แก้ไขเวลา / สถานะ", "edit-matches", m.id)}${button("ดาวน์โหลดแมตช์ OBS", "obs", m.id)}</div></div><div class="match-head"><div>${crest(m.home_id)}${escape(team(m.home_id)?.name)}</div><div><span class="score">${s.home} : ${s.away}</span><div>${date(m.kickoff)}</div><small>${escape(m.venue)}</small></div><div>${crest(m.away_id)}${escape(team(m.away_id)?.name)}</div></div><div class="tabs">${button("เหตุการณ์ / ผลการแข่งขัน", "tab", "events", tab === "events" ? "active" : "")}${button("ตัวจริง / ตัวสำรอง", "tab", "lineups", tab === "lineups" ? "active" : "")}</div>${
     tab === "lineups"
       ? `<div class="two">${[m.home_id, m.away_id]
           .map(
