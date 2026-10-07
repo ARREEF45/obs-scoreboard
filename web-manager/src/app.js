@@ -854,12 +854,21 @@ function login() {
       if (setup) configure(f.get("url").trim(), f.get("key").trim());
       else {
         const { data, error } = await client.auth.signInWithPassword({
-          email: f.get("email"),
+          email: f.get("email").trim(),
           password: f.get("password"),
         });
         if (error) {
-          $("#auth-error").textContent =
-            "เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจอีเมลและรหัสผ่าน";
+          const reasons = {
+            invalid_credentials: "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่มีบัญชีในระบบนี้ ให้ผู้ดูแลตรวจใน Supabase → Authentication → Users (บัญชีเข้าเว็บ Supabase/GitHub ไม่ใช่บัญชีของระบบนี้)",
+            email_not_confirmed: "บัญชีนี้ยังไม่ได้ยืนยันอีเมล กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ",
+            user_banned: "บัญชีนี้ถูกระงับ กรุณาติดต่อผู้ดูแล",
+            over_request_rate_limit: "ลองเข้าสู่ระบบถี่เกินไป กรุณารอสักครู่แล้วลองใหม่",
+          };
+          const detail = reasons[error.code] ||
+            (error.status === 429 ? "ลองเข้าสู่ระบบถี่เกินไป กรุณารอสักครู่แล้วลองใหม่" :
+              error.name === "AuthRetryableFetchError" ? "เชื่อมต่อบริการเข้าสู่ระบบไม่ได้ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่" :
+              "บริการเข้าสู่ระบบขัดข้อง กรุณาแจ้งรหัสข้อผิดพลาดด้านล่างแก่ผู้ดูแล");
+          $("#auth-error").textContent = detail + " [" + (error.code || error.name || "auth_error") + "]";
           return;
         }
         user = data.user;
