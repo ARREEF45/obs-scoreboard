@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Scoreboard Control Panel</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap');
+    body {
+      font-family: 'Kanit', sans-serif;
+      background: #1e293b;
+      color: #f8fafc;
+      margin: 0;
+      padding: 12px;
+      font-size: 13px;
+    }
+    .control-sticky { position:sticky; z-index:100; top:0; margin-bottom:10px; padding-bottom:6px; background:linear-gradient(#1e293b 88%,transparent); }
+    .connection-bar { display:flex; align-items:center; gap:9px; margin:0 0 6px; padding:7px 10px; border:1px solid #475569; border-radius:7px; background:rgba(15,23,42,.97); box-shadow:0 4px 12px rgba(0,0,0,.25); backdrop-filter:blur(8px); }
+    .connection-dot { flex:0 0 11px; width:11px; height:11px; border-radius:50%; background:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.16); }
+    .connection-bar.online .connection-dot { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.16),0 0 9px rgba(34,197,94,.75); }
+    .connection-bar.offline .connection-dot { background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.18),0 0 9px rgba(239,68,68,.7); }
+    .connection-copy { min-width:0; flex:1; }
+    .connection-title { display:block; font-size:12px; font-weight:600; }
+    .connection-detail { display:block; overflow:hidden; color:#94a3b8; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+    .connection-retry { flex:0 0 auto; min-height:30px; padding:5px 10px; font-size:11px; }
+    .quick-console { display:grid; grid-template-columns:minmax(150px,1fr) minmax(210px,.8fr) minmax(150px,1fr) auto; gap:6px; align-items:center; padding:7px; border:1px solid #334155; border-radius:7px; background:rgba(7,16,42,.98); box-shadow:0 5px 14px rgba(0,0,0,.32); }
+    .quick-team { display:grid; grid-template-columns:auto 44px auto; align-items:center; justify-content:center; gap:5px; }
+    .quick-team-name { grid-column:1/-1; overflow:hidden; color:#cbd5e1; font-size:11px; font-weight:600; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
+    .quick-team button { min-width:38px; min-height:35px; padding:3px; font-size:18px; }
+    .quick-score { font:800 25px Arial,sans-serif; text-align:center; }
+    .quick-clock { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+    .quick-time { grid-column:1/-1; color:#facc15; font:800 25px Arial,sans-serif; text-align:center; }
+    .quick-clock button { min-height:34px; padding:4px; font-size:11px; }
+    .quick-undo { min-width:64px; min-height:46px; padding:5px; background:#b91c1c; font-size:11px; }
+    .control-tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-top:6px; }
+    .control-tab { min-height:34px; padding:5px 7px; border:1px solid #334155; background:#334155; color:#cbd5e1; font-size:11px; }
+    .control-tab.active { border-color:#38bdf8; background:#0369a1; color:#fff; box-shadow:0 0 0 1px rgba(56,189,248,.2); }
+    .control-card-hidden { display:none!important; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .card { background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155; }
+    h4 { margin: 0 0 8px 0; color: #38bdf8; font-size: 14px; }
+    label { display: block; margin-top: 6px; color: #94a3b8; font-size: 12px; }
+    input[type="text"], input[type="password"], input[type="number"], select, textarea {
+      width: 100%; box-sizing: border-box; padding: 6px; border-radius: 4px;
+      border: 1px solid #334155; background: #1e293b; color: #fff; margin-top: 2px;
+      font-family: 'Kanit';
+    }
+    textarea { min-height:120px; resize:vertical; line-height:1.45; }
+    input[type="file"] {
+      width: 100%; box-sizing: border-box; padding: 4px; border-radius: 4px;
+      border: 1px dashed #334155; background: #1e293b; color: #94a3b8; margin-top: 2px; font-size: 11px;
+    }
+    .logo-option {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #1e293b;
+    }
+    .score-ctrl { display: flex; gap: 4px; margin-top: 6px; }
+    button {
+      flex: 1; padding: 6px; border: none; border-radius: 4px; background: #0284c7;
+      color: white; font-weight: bold; cursor: pointer; font-family: 'Kanit';
+    }
+    button:hover { background: #0369a1; }
+    button.btn-red { background: #ef4444; }
+    button.btn-red:hover { background: #dc2626; }
+    button.btn-green { background: #10b981; }
+    button.btn-green:hover { background: #059669; }
+    .timer-ctrl { display: flex; gap: 6px; margin-top: 8px; }
+    .custom-time { display: flex; gap: 6px; align-items: flex-end; margin-top: 8px; }
+    .custom-time > div { flex: 1; }
+    .custom-time button { flex: 0 0 120px; height: 33px; }
+    .display-switches { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .display-switch {
+      display:flex; align-items:center; gap:8px; margin:0; padding:9px 10px;
+      border:1px solid #334155; border-radius:5px; background:#1e293b; color:#f8fafc; cursor:pointer;
+    }
+    .display-switch input { width:17px; height:17px; margin:0; accent-color:#10b981; }
+    .kit-color-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .kit-color-field { padding:9px; border:1px solid #334155; border-radius:6px; background:#1e293b; }
+    .kit-color-field strong { display:block; margin-bottom:7px; text-align:center; }
+    .kit-color-picker { display:grid; grid-template-columns:54px 1fr; gap:8px; align-items:center; }
+    input[type="color"].kit-color-input { width:54px; height:42px; margin:0; padding:3px; border:1px solid #475569; border-radius:5px; background:#0f172a; cursor:pointer; }
+    .kit-color-code { color:#cbd5e1; font:700 13px Arial,sans-serif; text-transform:uppercase; }
+    .scoreboard-toggle { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:42px; padding:9px 12px; border:1px solid transparent; font-weight:600; text-align:left; transition:background .18s ease,border-color .18s ease,transform .12s ease; }
+    .scoreboard-toggle:active { transform:scale(.985); }
+    .scoreboard-toggle.on { border-color:#34d399; background:linear-gradient(135deg,#047857,#10b981); }
+    .scoreboard-toggle.on:hover { background:linear-gradient(135deg,#047857,#059669); }
+    .scoreboard-toggle.off { border-color:#f87171; background:linear-gradient(135deg,#b91c1c,#ef4444); }
+    .scoreboard-toggle.off:hover { background:linear-gradient(135deg,#991b1b,#dc2626); }
+    .toggle-state { flex:0 0 auto; padding:2px 8px; border-radius:999px; background:rgba(0,0,0,.22); font-size:11px; letter-spacing:.4px; }
+    #goal-scorers-button,#standings-display-button { grid-column:1/-1; }
+    .lineup-buttons { display:grid; grid-template-columns:.72fr 1fr 1fr; gap:7px; margin-top:4px; }
+    .lineup-button { padding:9px 7px; border:1px solid #334155; background:#1e293b; color:#cbd5e1; transition:background .18s ease,border-color .18s ease,transform .12s ease; }
+    .lineup-button:hover { background:#27364d; }
+    .lineup-button:active { transform:scale(.98); }
+    .lineup-button.active { border-color:#38bdf8; background:linear-gradient(135deg,#0369a1,#0284c7); color:#fff; box-shadow:0 0 0 1px rgba(56,189,248,.25),0 4px 10px rgba(0,0,0,.22); }
+    .lineup-button[data-value="none"].active { border-color:#64748b; background:#475569; }
+    .penalty-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .penalty-team { padding:8px; border:1px solid #334155; border-radius:5px; background:#1e293b; }
+    .penalty-team strong { display:block; margin-bottom:6px; text-align:center; }
+    .penalty-result { min-height:24px; margin-bottom:6px; color:#cbd5e1; font-size:17px; letter-spacing:4px; text-align:center; }
+    .penalty-actions { display:flex; gap:5px; }
+    .card-header { display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; user-select:none; }
+    .card-header h4 { flex:1; margin:0; }
+    .collapse-button {
+      flex:0 0 28px; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center;
+      border:1px solid #334155; border-radius:50%; background:#1e293b; color:#7dd3fc;
+      font-family:Arial,sans-serif; font-size:16px; line-height:1;
+    }
+    .collapse-button:hover { background:#334155; }
+    .reset-section-button {
+      flex:0 0 28px; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center;
+      border:1px solid #334155; border-radius:50%; background:#1e293b; color:#facc15;
+      font-family:Arial,sans-serif; font-size:17px; line-height:1;
+    }
+    .reset-section-button:hover { background:#334155; color:#fde047; }
+    .card-content { overflow:hidden; max-height:1200px; opacity:1; transition:max-height .28s ease,opacity .2s ease,margin .28s ease; }
+    .card.collapsed .card-content { max-height:0; opacity:0; margin:0; pointer-events:none; }
+    .card.collapsed .collapse-button { transform:rotate(-90deg); }
+    .collapse-button { transition:transform .22s ease,background .2s ease; }
+    .discipline-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .discipline-team { padding:8px; border:1px solid #334155; border-radius:5px; background:#1e293b; }
+    .discipline-team strong { display:block; margin-bottom:7px; text-align:center; }
+    .discipline-row { display:grid; grid-template-columns:62px 1fr; gap:6px; align-items:center; margin-top:5px; }
+    .discipline-label { display:flex; align-items:center; gap:6px; color:#cbd5e1; font-size:12px; }
+    .substitution-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .substitution-team { padding:9px; border:1px solid #334155; border-radius:5px; background:#1e293b; }
+    .substitution-team strong { display:block; margin-bottom:7px; color:#f8fafc; text-align:center; }
+    .substitution-team label { display:flex; align-items:center; gap:6px; }
+    .sub-arrow { font-family:Arial,sans-serif; font-size:16px; font-weight:900; }
+    .sub-arrow.out { color:#fb7185; }
+    .sub-arrow.in { color:#34d399; }
+    .substitution-team button { margin-top:9px; min-height:36px; background:linear-gradient(135deg,#047857,#10b981); }
+    .card-swatch { width:13px; height:18px; border-radius:2px; box-shadow:0 1px 3px rgba(0,0,0,.35); }
+    .card-swatch.yellow { background:#facc15; }
+    .card-swatch.red { background:#ef3340; }
+    .event-history-actions { display:flex; gap:7px; margin-bottom:8px; }
+    .event-history-list { display:grid; gap:5px; max-height:230px; overflow:auto; }
+    .event-history-empty { padding:12px; border:1px dashed #334155; border-radius:5px; color:#94a3b8; text-align:center; }
+    .event-history-row { display:grid; grid-template-columns:56px minmax(0,1fr) auto auto; gap:8px; align-items:center; padding:7px 9px; border:1px solid #334155; border-radius:5px; background:#1e293b; }
+    .event-history-time { color:#facc15; font:700 12px Arial,sans-serif; }
+    .event-history-kind { color:#7dd3fc; font-size:11px; white-space:nowrap; }
+    .event-history-tools { display:flex; gap:4px; }
+    .event-history-tools button { flex:0 0 auto; min-height:28px; padding:3px 7px; font-size:11px; }
+    .preset-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
+    .preset-row button { min-width:125px; min-height:34px; }
+    .preset-note { margin-top:7px; padding:7px 9px; border-left:3px solid #38bdf8; border-radius:3px; background:#172033; color:#cbd5e1; font-size:11px; }
+    .preset-extra-times { display:flex; gap:6px; margin-top:6px; }
+    .utility-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+    .utility-grid button { min-height:38px; }
+    .safe-row,.obs-status-row { display:flex; align-items:center; gap:8px; margin-top:8px; padding:8px; border:1px solid #334155; border-radius:5px; background:#1e293b; }
+    .safe-row input { width:18px; height:18px; accent-color:#f59e0b; }
+    .graphic-duration-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; }
+    .checklist { display:grid; gap:5px; }
+    .check-item { display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:5px; background:#1e293b; color:#cbd5e1; }
+    .check-item::before { content:'●'; color:#ef4444; }
+    .check-item.ok::before { color:#22c55e; }
+    .obs-grid { display:grid; grid-template-columns:1.4fr .55fr 1fr; gap:7px; }
+    .obs-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:8px; }
+    .obs-status-dot { width:10px; height:10px; border-radius:50%; background:#ef4444; }
+    .obs-status-row.online .obs-status-dot { background:#22c55e; box-shadow:0 0 8px #22c55e; }
+    .full-width { grid-column: span 2; }
+    .hidden { display: none; }
+    
+    /* Checkbox & Label Custom Style */
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: #f8fafc;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .checkbox-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #0284c7;
+    }
+    @media (max-width:720px) {
+      body { padding:8px max(8px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); font-size:14px; }
+      .grid { grid-template-columns:1fr; gap:8px; }
+      .full-width { grid-column:span 1; }
+      .card { padding:10px; border-radius:8px; }
+      .display-switches,.penalty-grid,.discipline-grid,.substitution-grid { grid-template-columns:1fr; }
+      .scoreboard-toggle { min-height:48px; font-size:14px; }
+      .lineup-buttons { grid-template-columns:.7fr 1fr 1fr; }
+      .lineup-button { min-height:46px; padding:8px 5px; }
+      input[type="text"],input[type="number"],select,textarea { min-height:42px; padding:8px; font-size:16px; }
+      button { min-height:42px; font-size:14px; touch-action:manipulation; }
+      .score-ctrl button { min-width:44px; }
+      .custom-time { flex-wrap:wrap; }
+      .custom-time > div { min-width:calc(50% - 6px); }
+      .custom-time button { flex:1 0 100%; height:44px; }
+      .timer-ctrl { display:grid; grid-template-columns:1fr 1fr; }
+      .discipline-row { grid-template-columns:68px minmax(0,1fr); }
+      .collapse-button,.reset-section-button { min-height:32px; }
+      .quick-console { grid-template-columns:1fr 1fr auto; }
+      .quick-clock { grid-column:1/-1; grid-row:1; }
+      .quick-team.home-quick { grid-column:1; }
+      .quick-team.away-quick { grid-column:2; }
+      .quick-undo { grid-column:3; grid-row:2; min-width:52px; }
+      .control-tabs { display:flex; overflow-x:auto; scrollbar-width:none; }
+      .control-tab { flex:0 0 auto; min-width:92px; }
+      .graphic-duration-grid,.obs-grid { grid-template-columns:1fr 1fr; }
+      .obs-grid > :last-child { grid-column:1/-1; }
+      .obs-actions { grid-template-columns:1fr; }
+    }
+    @media (max-width:390px) {
+      .lineup-buttons { grid-template-columns:1fr; }
+      .penalty-actions { flex-wrap:wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="control-sticky">   
+  <div id="connection-bar" class="connection-bar connecting" role="status" aria-live="polite">
+    <span class="connection-dot"></span>
+    <span class="connection-copy"><strong id="connection-title" class="connection-title">กำลังเชื่อมต่อเซิร์ฟเวอร์…</strong><small id="connection-detail" class="connection-detail">กำลังตรวจสอบการซิงค์ข้อมูล</small></span>
+    <button type="button" class="connection-retry" onclick="retryServerConnection()">เชื่อมต่อใหม่</button>
+  </div>
+  <div class="quick-console" aria-label="แถบควบคุมด่วน">
+    <div class="quick-team home-quick"><span id="quick-home-name" class="quick-team-name">HOME</span><button type="button" onclick="changeScore('home',-1)">−</button><span id="quick-home-score" class="quick-score">0</span><button type="button" class="btn-green" onclick="changeScore('home',1)">+</button></div>
+    <div class="quick-clock"><span id="quick-timer" class="quick-time">00:00</span><button type="button" class="btn-green" onclick="startTimer()">▶ เริ่ม</button><button type="button" class="btn-red" onclick="pauseTimer()">Ⅱ หยุด</button></div>
+    <div class="quick-team away-quick"><span id="quick-away-name" class="quick-team-name">AWAY</span><button type="button" onclick="changeScore('away',-1)">−</button><span id="quick-away-score" class="quick-score">0</span><button type="button" class="btn-green" onclick="changeScore('away',1)">+</button></div>
+    <button type="button" class="quick-undo" onclick="undoLastEvent()">↶<br>Undo</button>
+  </div>
+  <nav class="control-tabs" aria-label="หมวดควบคุม">
+    <button type="button" class="control-tab active" data-control-tab="live" onclick="setControlTab('live')">แข่งขัน</button>
+    <button type="button" class="control-tab" data-control-tab="graphics" onclick="setControlTab('graphics')">กราฟิก OBS</button>
+    <button type="button" class="control-tab" data-control-tab="replay" onclick="setControlTab('replay')">Replay</button>
+    <button type="button" class="control-tab" data-control-tab="history" onclick="setControlTab('history')">ประวัติ</button>
+    <button type="button" class="control-tab" data-control-tab="setup" onclick="setControlTab('setup')">ตั้งค่าก่อนแข่ง</button>
+  </nav>
+  </div>
+
+  <div class="grid">
+    <div class="card full-width">
+      <h4>การแสดงผลใน OBS</h4>
+      <div class="display-switches">
+        <input type="checkbox" id="show-top-display" hidden>
+        <button type="button" id="top-display-button" class="scoreboard-toggle off" onclick="toggleScoreboardDisplay('top')"><span>สกอร์บอร์ดด้านบน</span><span class="toggle-state">ปิด</span></button>
+        <input type="checkbox" id="show-main-display" checked hidden>
+        <button type="button" id="main-display-button" class="scoreboard-toggle on" onclick="toggleScoreboardDisplay('main')"><span>สกอร์บอร์ดด้านล่าง</span><span class="toggle-state">เปิด</span></button>
+        <input type="checkbox" id="show-goal-scorers" hidden>
+        <button type="button" id="goal-scorers-button" class="scoreboard-toggle off" onclick="toggleScoreboardDisplay('scorers')"><span>รายชื่อผู้ทำประตูเหนือสกอร์ล่าง</span><span class="toggle-state">ปิด</span></button>
+        <input type="checkbox" id="show-standings-display" hidden>
+        <button type="button" id="standings-display-button" class="scoreboard-toggle off" onclick="toggleScoreboardDisplay('standings')"><span>ตารางคะแนนการแข่งขัน</span><span class="toggle-state">ปิด</span></button>
+      </div>
+      <label>แสดงกราฟิกรายชื่อทีม</label>
+      <input type="hidden" id="lineup-display" value="none">
+      <div class="lineup-buttons">
+        <button type="button" class="lineup-button active" data-value="none" onclick="setLineupDisplay('none')">ปิด</button>
+        <button type="button" class="lineup-button" data-value="home" onclick="setLineupDisplay('home')">ทีมเหย้า</button>
+        <button type="button" class="lineup-button" data-value="away" onclick="setLineupDisplay('away')">ทีมเยือน</button>
+      </div>
+      <button type="button" style="width:100%;margin-top:8px;background:#475569" onclick="window.open('standings-control.html','scoreboard-standings-control')">จัดการทีมและบันทึกผลการแข่งขัน</button>
+    </div>
+    <div class="card full-width">
+      <h4>ดวลจุดโทษ</h4>
+      <label class="display-switch" style="margin-bottom:8px;">
+        <input type="checkbox" id="show-penalty-display" onchange="togglePenaltyDisplay()">
+        แสดงกราฟิกดวลจุดโทษ
+      </label>
+      <div class="penalty-grid">
+        <div class="penalty-team">
+          <strong>ทีมเหย้า</strong>
+          <div id="home-penalty-result" class="penalty-result">—</div>
+          <div class="penalty-actions">
+            <button class="btn-green" onclick="addPenalty('home', true)">เข้า ✓</button>
+            <button class="btn-red" onclick="addPenalty('home', false)">ไม่เข้า ✕</button>
+            <button onclick="undoPenalty('home')">ย้อน</button>
+          </div>
+        </div>
+        <div class="penalty-team">
+          <strong>ทีมเยือน</strong>
+          <div id="away-penalty-result" class="penalty-result">—</div>
+          <div class="penalty-actions">
+            <button class="btn-green" onclick="addPenalty('away', true)">เข้า ✓</button>
+            <button class="btn-red" onclick="addPenalty('away', false)">ไม่เข้า ✕</button>
+            <button onclick="undoPenalty('away')">ย้อน</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn-red" style="margin-top:7px; width:100%;" onclick="resetPenalties()">รีเซ็ตผลจุดโทษทั้งหมด</button>
+    </div>
+
+    <div class="card full-width">
+      <h4>สีชุดบนพื้นหลังสกอร์ด้านบน</h4>
+      <input type="checkbox" id="show-kit-colors" hidden>
+      <button type="button" id="kit-colors-display-button" class="scoreboard-toggle off" style="width:100%;margin-bottom:8px" onclick="toggleKitColorDisplay()"><span>แสดงแถบสีชุดทีม</span><span class="toggle-state">ปิด</span></button>
+      <div class="kit-color-grid">
+        <div class="kit-color-field"><strong>ทีมเหย้า</strong><div class="kit-color-picker"><input id="home-kit-color" class="kit-color-input" type="color" value="#1d4ed8" oninput="updateKitColorLabels();updateAll()"><span id="home-kit-color-code" class="kit-color-code">#1D4ED8</span></div></div>
+        <div class="kit-color-field"><strong>ทีมเยือน</strong><div class="kit-color-picker"><input id="away-kit-color" class="kit-color-input" type="color" value="#dc2626" oninput="updateKitColorLabels();updateAll()"><span id="away-kit-color-code" class="kit-color-code">#DC2626</span></div></div>
+      </div>
+      <label>รูปแบบแถบสีที่รวมกับพื้นหลัง</label>
+      <select id="kit-tab-orientation" onchange="updateAll()"><option value="vertical">แนวตั้งตรง</option><option value="horizontal">แนวนอน</option></select>
+    </div>
+    <!-- Home Team -->
+    <div class="card">
+      <h4>ทีมเหย้า (Home)</h4>
+      <label>ชื่อทีม</label>
+      <input type="text" id="home-name" value="HOME" oninput="updateAll()">
+      
+      <!-- Home Logo Selector -->
+      <div class="logo-option">
+        <label>แหล่งที่มาโลโก้</label>
+        <select id="home-logo-type" onchange="toggleLogoInput('home')">
+          <option value="url">ลิงก์ภายนอก (URL)</option>
+          <option value="file">อัปโหลดจากเครื่อง</option>
+        </select>
+
+        <div id="home-url-group">
+          <label>URL โลโก้</label>
+          <input type="text" id="home-logo-url" placeholder="https://example.com/logo.png" oninput="updateAll()">
+        </div>
+
+        <div id="home-file-group" class="hidden">
+          <label>เลือกไฟล์รูป (.png, .jpg, .svg)</label>
+          <input type="file" id="home-logo-file" accept="image/*" onchange="handleFileUpload('home')">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Away Team -->
+    <div class="card">
+      <h4>ทีมเยือน (Away)</h4>
+      <label>ชื่อทีม</label>
+      <input type="text" id="away-name" value="AWAY" oninput="updateAll()">
+      
+      <!-- Away Logo Selector -->
+      <div class="logo-option">
+        <label>แหล่งที่มาโลโก้</label>
+        <select id="away-logo-type" onchange="toggleLogoInput('away')">
+          <option value="url">ลิงก์ภายนอก (URL)</option>
+          <option value="file">อัปโหลดจากเครื่อง</option>
+        </select>
+
+        <div id="away-url-group">
+          <label>URL โลโก้</label>
+          <input type="text" id="away-logo-url" placeholder="https://example.com/logo.png" oninput="updateAll()">
+        </div>
+
+        <div id="away-file-group" class="hidden">
+          <label>เลือกไฟล์รูป (.png, .jpg, .svg)</label>
+          <input type="file" id="away-logo-file" accept="image/*" onchange="handleFileUpload('away')">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Score Control -->
+    <div class="card full-width">
+      <h4>ควบคุมสกอร์</h4>
+      <div class="grid">
+        <div>
+          <label style="text-align:center;">ทีมเหย้า</label>
+          <select id="home-goal-player"><option value="">ไม่ระบุผู้ทำประตู</option></select>
+          <div class="score-ctrl">
+            <button onclick="changeScore('home', -1)">−</button>
+            <input type="number" id="home-score" value="0" min="0" style="text-align:center; font-size:20px; font-weight:bold;" onchange="updateAll()">
+            <button class="btn-green" onclick="changeScore('home', 1)">+</button>
+          </div>
+        </div>
+        <div>
+          <label style="text-align:center;">ทีมเยือน</label>
+          <select id="away-goal-player"><option value="">ไม่ระบุผู้ทำประตู</option></select>
+          <div class="score-ctrl">
+            <button onclick="changeScore('away', -1)">−</button>
+            <input type="number" id="away-score" value="0" min="0" style="text-align:center; font-size:20px; font-weight:bold;" onchange="updateAll()">
+            <button class="btn-green" onclick="changeScore('away', 1)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <h4>ใบเหลืองและใบแดง</h4>
+      <div class="discipline-grid">
+        <div class="discipline-team">
+          <strong>ทีมเหย้า</strong>
+          <select id="home-card-player"><option value="">ไม่ระบุนักเตะ</option></select>
+          <div class="discipline-row"><span class="discipline-label"><i class="card-swatch yellow"></i>เหลือง</span><div class="score-ctrl"><button onclick="changeDiscipline('home','yellow',-1)">−</button><input id="home-yellow" type="number" value="0" min="0" style="text-align:center" onchange="updateAll()"><button onclick="changeDiscipline('home','yellow',1)">+</button></div></div>
+          <div class="discipline-row"><span class="discipline-label"><i class="card-swatch red"></i>แดง</span><div class="score-ctrl"><button onclick="changeDiscipline('home','red',-1)">−</button><input id="home-red" type="number" value="0" min="0" style="text-align:center" onchange="updateAll()"><button class="btn-red" onclick="changeDiscipline('home','red',1)">+</button></div></div>
+        </div>
+        <div class="discipline-team">
+          <strong>ทีมเยือน</strong>
+          <select id="away-card-player"><option value="">ไม่ระบุนักเตะ</option></select>
+          <div class="discipline-row"><span class="discipline-label"><i class="card-swatch yellow"></i>เหลือง</span><div class="score-ctrl"><button onclick="changeDiscipline('away','yellow',-1)">−</button><input id="away-yellow" type="number" value="0" min="0" style="text-align:center" onchange="updateAll()"><button onclick="changeDiscipline('away','yellow',1)">+</button></div></div>
+          <div class="discipline-row"><span class="discipline-label"><i class="card-swatch red"></i>แดง</span><div class="score-ctrl"><button onclick="changeDiscipline('away','red',-1)">−</button><input id="away-red" type="number" value="0" min="0" style="text-align:center" onchange="updateAll()"><button class="btn-red" onclick="changeDiscipline('away','red',1)">+</button></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <h4>เปลี่ยนตัวผู้เล่น</h4>
+      <div class="substitution-grid">
+        <div class="substitution-team">
+          <strong>ทีมเหย้า</strong>
+          <label><span class="sub-arrow out">▼</span>ผู้เล่นออก</label>
+          <select id="home-sub-out"><option value="">เลือกผู้เล่นออก</option></select>
+          <label><span class="sub-arrow in">▲</span>ผู้เล่นเข้า</label>
+          <select id="home-sub-in"><option value="">เลือกผู้เล่นเข้า</option></select>
+          <button type="button" onclick="showSubstitution('home')">แสดงการเปลี่ยนตัว</button>
+        </div>
+        <div class="substitution-team">
+          <strong>ทีมเยือน</strong>
+          <label><span class="sub-arrow out">▼</span>ผู้เล่นออก</label>
+          <select id="away-sub-out"><option value="">เลือกผู้เล่นออก</option></select>
+          <label><span class="sub-arrow in">▲</span>ผู้เล่นเข้า</label>
+          <select id="away-sub-in"><option value="">เลือกผู้เล่นเข้า</option></select>
+          <button type="button" onclick="showSubstitution('away')">แสดงการเปลี่ยนตัว</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <h4>ประวัติเหตุการณ์การแข่งขัน</h4>
+      <div class="event-history-actions">
+        <button type="button" class="btn-red" onclick="undoLastEvent()">↶ Undo เหตุการณ์ล่าสุด</button>
+      </div>
+      <div id="event-history-list" class="event-history-list"><div class="event-history-empty">ยังไม่มีเหตุการณ์</div></div>
+    </div>
+
+    <div class="card full-width">
+      <h4>จัดเก็บและความปลอดภัย</h4>
+      <div class="utility-grid">
+        <button type="button" onclick="exportMatchData()">Export แมตช์</button>
+        <button type="button" onclick="document.getElementById('import-match-file').click()">Import แมตช์</button>
+        <button type="button" onclick="createManualBackup()">สำรองข้อมูลตอนนี้</button>
+        <button type="button" onclick="restoreLatestBackup()">กู้ข้อมูลสำรองล่าสุด</button>
+      </div>
+      <input id="import-match-file" type="file" accept="application/json,.json" hidden onchange="importMatchData(this.files[0]);this.value=''">
+      <label class="safe-row"><input id="safe-mode" type="checkbox" onchange="saveSafeMode()"><span><strong>Safe Mode</strong><br><small>ยืนยันก่อนลดสกอร์ รีเซ็ต ลบเหตุการณ์ และจบการแข่งขัน</small></span></label>
+      <div id="backup-status" class="preset-note">สำรองอัตโนมัติทุก 30 วินาที เก็บย้อนหลัง 10 ชุด</div>
+    </div>
+
+    <div class="card full-width">
+      <h4>ระยะเวลาแสดงกราฟิก</h4>
+      <div class="graphic-duration-grid">
+        <div><label>GOAL (วินาที)</label><input id="goal-duration" type="number" min="2" max="20" step="0.5" value="5.6" onchange="updateAll()"></div>
+        <div><label>ใบเหลือง/แดง</label><input id="card-duration" type="number" min="2" max="20" step="0.5" value="5.6" onchange="updateAll()"></div>
+        <div><label>เปลี่ยนตัว</label><input id="sub-duration" type="number" min="3" max="30" step="0.5" value="7.1" onchange="updateAll()"></div>
+        <div><label>พักระหว่างคิว</label><input id="queue-gap" type="number" min="0" max="10" step="0.25" value="0.25" onchange="updateAll()"></div>
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <h4>ตรวจความพร้อมก่อนถ่ายทอด</h4>
+      <div id="readiness-checklist" class="checklist"></div>
+    </div>
+
+    <div class="card full-width">
+      <h4>เตรียมข้อมูลการแข่งขัน</h4>
+      <div class="utility-grid">
+        <button type="button" onclick="window.open('https://arreef45.github.io/obs-scoreboard/manager/','scoreboard-team-manager')">จัดการทีมและโปรแกรมบนเว็บ</button>
+        <button type="button" onclick="window.open('cloud-lineup.html','scoreboard-lineup-control')">จัดรายชื่อนัดนี้</button>
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <h4>OBS Replay Buffer</h4>
+      <div class="obs-grid">
+        <div><label>IP เครื่อง OBS</label><input id="obs-host" type="text" placeholder="เช่น 192.168.1.10"></div>
+        <div><label>Port</label><input id="obs-port" type="number" value="4455"></div>
+        <div><label>รหัสผ่าน OBS WebSocket</label><input id="obs-password" type="password" autocomplete="current-password"></div>
+      </div>
+      <div class="obs-grid">
+        <div><label>ชื่อ Scene สำหรับ Replay</label><input id="obs-replay-scene" type="text" placeholder="REPLAY"></div>
+        <div><label>ชื่อ Media Source</label><input id="obs-replay-source" type="text" placeholder="Replay Media"></div>
+        <div><label>ชื่อ Scene ภาพสด</label><input id="obs-live-scene" type="text" placeholder="LIVE"></div>
+      </div>
+      <div class="obs-actions"><button type="button" onclick="connectObsWebSocket()">เชื่อมต่อ OBS</button><button type="button" class="btn-green" onclick="obsReplayAction('StartReplayBuffer','เริ่ม Replay Buffer แล้ว')">เริ่ม Replay Buffer</button><button type="button" class="btn-red" onclick="obsReplayAction('StopReplayBuffer','หยุด Replay Buffer แล้ว')">หยุด Replay Buffer</button><button type="button" onclick="saveObsReplay()">บันทึก Replay</button><button type="button" onclick="playLastObsReplay()">เล่น Replay ล่าสุด</button><button type="button" class="btn-green" onclick="returnToLiveObs()">กลับภาพสด</button><button type="button" onclick="getLastObsReplay()">ดูตำแหน่งคลิปล่าสุด</button></div>
+      <div id="obs-status-row" class="obs-status-row"><span class="obs-status-dot"></span><span id="obs-status">ยังไม่ได้เชื่อมต่อ OBS</span></div>
+    </div>
+
+    <div class="card full-width">
+      <h4>รูปแบบการแข่งขัน</h4>
+      <div class="preset-row">
+        <div><label>เลือก Preset</label><select id="match-format"><option value="football">ฟุตบอลมาตรฐาน</option><option value="futsal">ฟุตซอล</option><option value="knockout">ฟุตบอลรอบน็อกเอาต์</option></select></div>
+        <button type="button" onclick="applySelectedMatchPreset()">ใช้รูปแบบ</button>
+      </div>
+      <div id="preset-note" class="preset-note">ครึ่งละ 45 นาที · FIRST HALF / HALF TIME / SECOND HALF / FULL TIME</div>
+    </div>
+
+    <!-- Timer Control -->
+    <div class="card full-width">
+      <h4>เวลาการแข่งขัน & ทดเวลา</h4>
+      <label>ช่วงการแข่งขัน</label>
+      <select id="period" onchange="updateAll()">
+        <option value="FIRST HALF">FIRST HALF</option>
+        <option value="HALF TIME">HALF TIME</option>
+        <option value="SECOND HALF">SECOND HALF</option>
+        <option value="EXTRA TIME">EXTRA TIME</option>
+        <option value="FULL TIME">FULL TIME</option>
+      </select>
+      <div style="display: flex; gap: 10px; align-items: flex-end;">
+        <div style="flex: 1;">
+          <label>เวลาปัจจุบัน (นาที:วินาที)</label>
+          <div style="font-size: 20px; font-weight: bold; color: #facc15;" id="timer-display">00:00</div>
+        </div>
+        <div style="flex: 1;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="show-added-time" onchange="toggleAddedTimeInput()">
+            แสดงทดเวลาเจ็บ
+          </label>
+          <input type="number" id="added-time" value="1" min="0" placeholder="เช่น 3" oninput="updateAll()">
+        </div>
+      </div>
+      <div class="timer-ctrl">
+        <button class="btn-green" onclick="startTimer()">เริ่ม / เล่นต่อ</button>
+        <button class="btn-red" onclick="pauseTimer()">หยุดชั่วคราว</button>
+        <button id="quick-time-first" onclick="setQuickTime(45)">ครึ่งแรก (45')</button>
+        <button id="quick-time-second" onclick="setQuickTime(90)">ครึ่งหลัง (90')</button>
+        <button class="btn-red" onclick="finishMatch()">จบการแข่งขัน</button>
+        <button onclick="resetTimer()">รีเซ็ต 00:00</button>
+      </div>
+      <div id="preset-extra-times" class="preset-extra-times"></div>
+      <div class="custom-time">
+        <div>
+          <label>กำหนดนาที</label>
+          <input type="number" id="custom-minutes" value="0" min="0" max="999">
+        </div>
+        <div>
+          <label>กำหนดวินาที</label>
+          <input type="number" id="custom-seconds" value="0" min="0" max="59">
+        </div>
+        <button onclick="setCustomTime()">ตั้งเวลา</button>
+      </div>
+    </div>
+  </div>
+
+  <style>#cloud-panel input,#cloud-panel select {margin:8px 0;width:100%;} #cloud-panel button {margin:4px;} #cloud-panel a{color:#38bdf8;} .cloud-managed-field{display:none!important;}</style>
+  <script src="cloud-control.js" defer></script>
+  <script>
+    const channel = new BroadcastChannel('football_scoreboard');
+    let timerInterval = null;
+    let totalSeconds = 0;
+    let timerRunning = false;
+    let timerUpdatedAt = null;
+    let stateWriteQueue = Promise.resolve();
+    let pendingStateWrites = 0;
+    let stateReadInFlight = false;
+    let teamFieldBaseline = null;
+    const teamFields = ['homeName','awayName','homeLogo','awayLogo','homeKitColor','awayKitColor'];
+    const syncClientId = sessionStorage.getItem('scoreboard_control_id') || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem('scoreboard_control_id', syncClientId);
+    let lastSyncToken = '';
+    let syncSequence = 0;
+    let lastServerSuccess = 0;
+    let connectionFailures = 0;
+
+    function updateConnectionStatus(online, detail = '') {
+      const bar = document.getElementById('connection-bar');
+      if (!bar) return;
+      bar.classList.toggle('online', online);
+      bar.classList.toggle('offline', !online);
+      bar.classList.remove('connecting');
+      document.getElementById('connection-title').textContent = online ? 'เชื่อมต่อและซิงค์กับเซิร์ฟเวอร์แล้ว' : 'ขาดการเชื่อมต่อกับเซิร์ฟเวอร์';
+      document.getElementById('connection-detail').textContent = detail || (online ? `ซิงค์ล่าสุด ${new Date(lastServerSuccess).toLocaleTimeString('th-TH')}` : 'ตรวจสอบว่าโปรแกรม Server ยังเปิดอยู่และใช้งานเครือข่ายเดียวกัน');
+    }
+
+    function markServerOnline() {
+      lastServerSuccess = Date.now();
+      connectionFailures = 0;
+      updateConnectionStatus(true);
+    }
+
+    function markServerFailure() {
+      connectionFailures++;
+      if (!lastServerSuccess || Date.now() - lastServerSuccess > 2500) updateConnectionStatus(false);
+    }
+
+    async function serverFetch(url, options = {}) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2500);
+      try {
+        const response = await fetch(url, {...options, signal:controller.signal});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        markServerOnline();
+        return response;
+      } catch (error) {
+        markServerFailure();
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function retryServerConnection() {
+      const bar = document.getElementById('connection-bar');
+      bar.classList.remove('online','offline');
+      bar.classList.add('connecting');
+      document.getElementById('connection-title').textContent = 'กำลังเชื่อมต่อใหม่…';
+      try {
+        const response = await serverFetch('/api/state', {cache:'no-store'});
+        const data = await response.json();
+        if (data && Object.keys(data).length) restoreState(data, true);
+      } catch (_) {}
+    }
+
+    let activeMatchFormat = 'football';
+    const matchPresets = {
+      football: {
+        note:'ครึ่งละ 45 นาที · รูปแบบการแข่งขันมาตรฐาน', first:45, second:90,
+        periods:['FIRST HALF','HALF TIME','SECOND HALF','FULL TIME'], extras:[]
+      },
+      futsal: {
+        note:'ครึ่งละ 20 นาที · ปุ่มเวลาด่วน 20 และ 40 นาที', first:20, second:40,
+        periods:['FIRST HALF','HALF TIME','SECOND HALF','FULL TIME'], extras:[]
+      },
+      knockout: {
+        note:'รองรับต่อเวลาถึง 120 นาทีและดวลจุดโทษ', first:45, second:90,
+        periods:['FIRST HALF','HALF TIME','SECOND HALF','EXTRA TIME FIRST HALF','EXTRA TIME HALF TIME','EXTRA TIME SECOND HALF','PENALTY SHOOTOUT','FULL TIME'],
+        extras:[{minute:105,label:"ต่อเวลาครึ่งแรก (105')"},{minute:120,label:"ต่อเวลาครึ่งหลัง (120')"}]
+      }
+    };
+
+    function applyMatchPreset(format, sendUpdate = true) {
+      const selected = matchPresets[format] ? format : 'football';
+      const preset = matchPresets[selected];
+      activeMatchFormat = selected;
+      document.getElementById('match-format').value = selected;
+      const period = document.getElementById('period');
+      const currentPeriod = period.value;
+      period.replaceChildren(...preset.periods.map(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        return option;
+      }));
+      period.value = preset.periods.includes(currentPeriod) ? currentPeriod : preset.periods[0];
+      const first = document.getElementById('quick-time-first');
+      const second = document.getElementById('quick-time-second');
+      first.textContent = `ครึ่งแรก (${preset.first}')`;
+      second.textContent = `ครึ่งหลัง (${preset.second}')`;
+      first.onclick = () => setQuickTime(preset.first);
+      second.onclick = () => setQuickTime(preset.second);
+      document.getElementById('preset-note').textContent = preset.note;
+      document.getElementById('preset-extra-times').replaceChildren(...preset.extras.map(item => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = item.label;
+        button.onclick = () => setQuickTime(item.minute);
+        return button;
+      }));
+      if (sendUpdate) updateAll();
+    }
+
+    function applySelectedMatchPreset() {
+      applyMatchPreset(document.getElementById('match-format').value, true);
+    }
+
+    const localLogos = {
+      home: '',
+      away: ''
+    };
+    const penalties = { home: [], away: [] };
+    let lastGoalEvent = null;
+    let lastCardEvent = null;
+    let lastSubstitutionEvent = null;
+    let substitutionChanges = {home:[], away:[]};
+    let redCardedPlayers = {home:[], away:[]};
+    let goalScorers = {home:[], away:[]};
+    let eventHistory = [];
+    let graphicQueueUntil = 0;
+    let latestRosterData = {};
+
+    function scheduleGraphic(duration) {
+      const now = Date.now();
+      const displayAt = Math.max(now, graphicQueueUntil);
+      const gap = Math.max(0, Number(document.getElementById('queue-gap')?.value) || .25) * 1000;
+      graphicQueueUntil = displayAt + duration + gap;
+      return displayAt;
+    }
+
+    function graphicDuration(kind) {
+      const id = kind === 'goal' ? 'goal-duration' : kind === 'substitution' ? 'sub-duration' : 'card-duration';
+      const fallback = kind === 'substitution' ? 7.1 : 5.6;
+      return Math.max(1, Number(document.getElementById(id)?.value) || fallback) * 1000;
+    }
+
+    function addMatchEvent(event) {
+      eventHistory.push(event);
+      if (eventHistory.length > 100) eventHistory.shift();
+      renderEventHistory();
+    }
+
+    function renderEventHistory() {
+      const list = document.getElementById('event-history-list');
+      if (!list) return;
+      if (!eventHistory.length) {
+        list.innerHTML = '<div class="event-history-empty">ยังไม่มีเหตุการณ์</div>';
+        return;
+      }
+      list.replaceChildren(...eventHistory.slice().reverse().map(event => {
+        const row = document.createElement('div');
+        row.className = 'event-history-row';
+        const teamName = document.getElementById(`${event.team}-name`)?.value || (event.team === 'home' ? 'HOME' : 'AWAY');
+        const kind = event.kind === 'goal' ? 'GOAL' : event.kind === 'yellow' ? 'ใบเหลือง' : event.kind === 'red' ? 'ใบแดง' : 'เปลี่ยนตัว';
+        const detail = event.kind === 'substitution' ? `${event.playerOut} → ${event.playerIn}` : (event.player || teamName);
+        row.innerHTML = `<span class="event-history-time">${event.matchTime || '00:00'}</span><span>${teamName} · ${detail}</span><span class="event-history-kind">${kind}</span><span class="event-history-tools"><button type="button" data-action="edit">แก้ไข</button><button type="button" class="btn-red" data-action="delete">ลบ</button></span>`;
+        row.querySelector('[data-action="edit"]').onclick = () => editMatchEvent(event.id);
+        row.querySelector('[data-action="delete"]').onclick = () => deleteMatchEvent(event.id);
+        return row;
+      }));
+    }
+
+    function refreshLastEventsFromHistory() {
+      // Clearing trigger objects prevents an older event from replaying after Undo.
+      lastGoalEvent = null;
+      lastCardEvent = null;
+      lastSubstitutionEvent = null;
+    }
+
+    function undoLastEvent() {
+      if (!confirmSafeAction('ย้อนกลับเหตุการณ์ล่าสุด?')) return;
+      const event = eventHistory.pop();
+      if (!event) return;
+      revertMatchEvent(event);
+      refreshLastEventsFromHistory();
+      refreshPlayerOptions(latestRosterData);
+      renderEventHistory();
+      updateAll();
+    }
+
+    function revertMatchEvent(event) {
+      if (event.kind === 'goal') {
+        const score = document.getElementById(`${event.team}-score`);
+        score.value = Math.max(0, (parseInt(score.value, 10) || 0) - 1);
+        const index = goalScorers[event.team].findIndex(item => item.id === event.id);
+        if (index >= 0) goalScorers[event.team].splice(index, 1);
+      } else if (event.kind === 'yellow' || event.kind === 'red') {
+        const input = document.getElementById(`${event.team}-${event.kind}`);
+        input.value = Math.max(0, (parseInt(input.value, 10) || 0) - 1);
+        if (event.kind === 'red') {
+          const index = redCardedPlayers[event.team].lastIndexOf(event.player || null);
+          if (index >= 0) redCardedPlayers[event.team].splice(index, 1);
+        }
+      } else if (event.kind === 'substitution') {
+        const changes = substitutionChanges[event.team] || [];
+        const index = changes.findIndex(change => change.id === event.id);
+        if (index >= 0) changes.splice(index, 1); else changes.pop();
+      }
+    }
+
+    function editMatchEvent(id) {
+      const event = eventHistory.find(item => item.id === id);
+      if (!event) return;
+      const matchTime = prompt('เวลาเหตุการณ์ (MM:SS)', event.matchTime || '00:00');
+      if (matchTime === null) return;
+      if (!/^\d{1,3}:\d{2}$/.test(matchTime.trim())) { alert('กรุณาใช้รูปแบบ MM:SS'); return; }
+      event.matchTime = matchTime.trim();
+      if (event.kind === 'substitution') {
+        const playerOut = prompt('ผู้เล่นออก', event.playerOut || ''); if (playerOut === null) return;
+        const playerIn = prompt('ผู้เล่นเข้า', event.playerIn || ''); if (playerIn === null) return;
+        event.playerOut = playerOut.trim(); event.playerIn = playerIn.trim(); event.time = event.matchTime;
+        const change = (substitutionChanges[event.team] || []).find(item => item.id === event.id);
+        if (change) { change.playerOut = event.playerOut; change.playerIn = event.playerIn; }
+      } else {
+        const previousPlayer = event.player || null;
+        const player = prompt('ชื่อนักเตะ (เว้นว่างเพื่อใช้ชื่อทีม)', event.player || ''); if (player === null) return;
+        event.player = player.trim();
+        if (event.kind === 'goal') {
+          const scorer = goalScorers[event.team].find(item => item.id === event.id);
+          if (scorer) { scorer.player = event.player; scorer.minute = Math.max(1, Math.ceil(timeToSeconds(event.matchTime) / 60)); }
+        } else if (event.kind === 'red') {
+          const redIndex = redCardedPlayers[event.team].lastIndexOf(previousPlayer);
+          if (redIndex >= 0) redCardedPlayers[event.team][redIndex] = event.player || null;
+          refreshPlayerOptions(latestRosterData);
+        }
+      }
+      renderEventHistory(); updateAll();
+    }
+
+    function deleteMatchEvent(id) {
+      const index = eventHistory.findIndex(item => item.id === id);
+      if (index < 0 || !confirmSafeAction('ลบเหตุการณ์นี้และปรับข้อมูลการแข่งขัน?')) return;
+      const [event] = eventHistory.splice(index, 1);
+      revertMatchEvent(event); refreshLastEventsFromHistory(); refreshPlayerOptions(latestRosterData); renderEventHistory(); updateAll();
+    }
+
+    function timeToSeconds(value) {
+      const [minutes, seconds] = String(value || '0:0').split(':').map(Number);
+      return Math.max(0, (minutes || 0) * 60 + (seconds || 0));
+    }
+
+    function saveSafeMode() {
+      localStorage.setItem('football_scoreboard_safe_mode', document.getElementById('safe-mode').checked ? '1' : '0');
+    }
+
+    function confirmSafeAction(message) {
+      return !document.getElementById('safe-mode')?.checked || confirm(message);
+    }
+
+    function getStoredMatchState() {
+      try { return JSON.parse(localStorage.getItem('football_scoreboard_state')) || {}; } catch (_) { return {}; }
+    }
+
+    async function exportMatchData() {
+      updateAll();
+      let current=getStoredMatchState();
+      try { current=await (await serverFetch('/api/state',{cache:'no-store'})).json(); } catch (_) {}
+      const data = {...current, exportedAt:new Date().toISOString(), exportVersion:1};
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
+      link.download = `obs-scoreboard-${new Date().toISOString().replace(/[:.]/g,'-')}.json`; link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    async function importMatchData(file) {
+      if (!file || !confirmSafeAction('นำเข้าข้อมูลและแทนที่แมตช์ปัจจุบัน?')) return;
+      try {
+        const data = JSON.parse(await file.text());
+        if (!data || typeof data !== 'object') throw new Error();
+        await serverFetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        restoreState(data, true); updateAll(); createManualBackup();
+      } catch (_) { alert('ไฟล์ข้อมูลไม่ถูกต้อง'); }
+    }
+
+    function readBackups() {
+      try { return JSON.parse(localStorage.getItem('football_scoreboard_backups')) || []; } catch (_) { return []; }
+    }
+
+    function createBackup(manual = false) {
+      const state = getStoredMatchState(); if (!Object.keys(state).length) return;
+      const backups = readBackups(); const payload = JSON.stringify(state);
+      if (!manual && backups[0]?.payload === payload) return;
+      backups.unshift({createdAt:Date.now(), payload});
+      localStorage.setItem('football_scoreboard_backups', JSON.stringify(backups.slice(0,10)));
+      document.getElementById('backup-status').textContent = `สำรองล่าสุด ${new Date().toLocaleTimeString('th-TH')} · มี ${Math.min(backups.length,10)} ชุด`;
+    }
+
+    function createManualBackup() { updateAll(); createBackup(true); }
+    function restoreLatestBackup() {
+      const backup = readBackups()[0];
+      if (!backup) { alert('ยังไม่มีข้อมูลสำรอง'); return; }
+      if (!confirmSafeAction('กู้ข้อมูลสำรองล่าสุดและแทนที่สถานะปัจจุบัน?')) return;
+      try { restoreState(JSON.parse(backup.payload), true); updateAll(true); } catch (_) { alert('กู้ข้อมูลไม่สำเร็จ'); }
+    }
+
+    function updateReadinessChecklist() {
+      const checks = [
+        [lastServerSuccess && Date.now()-lastServerSuccess<3000,'เซิร์ฟเวอร์และการซิงค์ออนไลน์'],
+        [Date.now()-(Number(latestRosterData.displayHeartbeat)||0)<5000,'OBS Browser Source (display-combined) เชื่อมต่ออยู่'],
+        [Boolean(getLogoSource('home')) && Boolean(getLogoSource('away')),'มีโลโก้ทั้งสองทีม'],
+        [(latestRosterData.homePlayers || []).filter(p=>p && (p.status==='starter' || !p.status)).length===11 && (latestRosterData.awayPlayers || []).filter(p=>p && (p.status==='starter' || !p.status)).length===11,'ตัวจริงครบทีมละ 11 คน'],
+        [!timerRunning,'เวลาหยุดอยู่ก่อนเริ่มถ่ายทอด'],
+        [!document.getElementById('show-penalty-display').checked || !document.getElementById('show-main-display').checked,'กราฟิกหลักไม่แสดงทับกราฟิกดวลจุดโทษ']
+      ];
+      const box = document.getElementById('readiness-checklist'); if (!box) return;
+      box.replaceChildren(...checks.map(([ok,text])=>{const item=document.createElement('div');item.className=`check-item${ok?' ok':''}`;item.textContent=text;return item;}));
+    }
+
+    function rosterNames(value) {
+      return String(value || '').split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+    }
+
+    function populatePlayerSelect(id, players, placeholder) {
+      const select = document.getElementById(id);
+      const expectedValues = ['', ...players];
+      const currentValues = [...select.options].map(option => option.value);
+      if (currentValues.length === expectedValues.length && currentValues.every((value, index) => value === expectedValues[index])) return;
+      const selected = select.value;
+      select.replaceChildren();
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = placeholder;
+      select.appendChild(empty);
+      players.forEach(player => {
+        const option = document.createElement('option');
+        option.value = player;
+        option.textContent = player;
+        select.appendChild(option);
+      });
+      if ([...select.options].some(option => option.value === selected)) select.value = selected;
+    }
+
+    function refreshPlayerOptions(data) {
+      latestRosterData = data || latestRosterData;
+      ['home', 'away'].forEach(team => {
+        const roster = data[`${team}Players`];
+        const players = Array.isArray(roster)
+          ? roster.filter(player => player && player.name && (player.status === 'starter' || player.status === 'substitute' || !player.status)).map(player => `${player.number ? `${player.number} ` : ''}${player.name}`.trim())
+          : [...rosterNames(data[`${team}Starters`]), ...rosterNames(data[`${team}Substitutes`])];
+        const starters = Array.isArray(roster)
+          ? roster.filter(player => player && player.name && (player.status === 'starter' || !player.status)).map(player => `${player.number ? `${player.number} ` : ''}${player.name}`.trim())
+          : rosterNames(data[`${team}Starters`]);
+        const substitutes = Array.isArray(roster)
+          ? roster.filter(player => player && player.name && player.status === 'substitute').map(player => `${player.number ? `${player.number} ` : ''}${player.name}`.trim())
+          : rosterNames(data[`${team}Substitutes`]);
+        const activePlayers = new Set(starters.length ? starters : players);
+        const availableSubstitutes = new Set(substitutes.length ? substitutes : players);
+        (substitutionChanges[team] || []).forEach(change => {
+          activePlayers.delete(change.playerOut);
+          activePlayers.add(change.playerIn);
+          availableSubstitutes.delete(change.playerIn);
+          availableSubstitutes.delete(change.playerOut);
+        });
+        (redCardedPlayers[team] || []).forEach(player => {
+          activePlayers.delete(player);
+          availableSubstitutes.delete(player);
+        });
+        populatePlayerSelect(`${team}-goal-player`, [...activePlayers], 'ไม่ระบุผู้ทำประตู');
+        populatePlayerSelect(`${team}-card-player`, [...activePlayers], 'ไม่ระบุนักเตะ');
+        populatePlayerSelect(`${team}-sub-out`, [...activePlayers], 'เลือกผู้เล่นออก');
+        populatePlayerSelect(`${team}-sub-in`, [...availableSubstitutes], 'เลือกผู้เล่นเข้า');
+      });
+    }
+
+    function organizeControlCards() {
+      document.querySelectorAll('.grid > .card').forEach(card => {
+        let section = 'setup';
+        if (card.querySelector('#home-score,#home-card-player,#home-sub-out,#timer-display')) section = 'live';
+        else if (card.querySelector('#show-top-display,#show-penalty-display,#goal-duration,#home-kit-color')) section = 'graphics';
+        else if (card.querySelector('#obs-host')) section = 'replay';
+        else if (card.querySelector('#event-history-list,#backup-status')) section = 'history';
+        card.dataset.controlSection = section;
+      });
+      setControlTab(localStorage.getItem('football_scoreboard_control_tab') || 'live');
+    }
+
+    function setControlTab(section) {
+      const allowed = ['live','graphics','replay','history','setup'];
+      const selected = allowed.includes(section) ? section : 'live';
+      document.querySelectorAll('.grid > .card[data-control-section]').forEach(card => card.classList.toggle('control-card-hidden', card.dataset.controlSection !== selected));
+      document.querySelectorAll('.control-tab').forEach(button => {
+        const active = button.dataset.controlTab === selected;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', String(active));
+      });
+      localStorage.setItem('football_scoreboard_control_tab', selected);
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function updateQuickConsole() {
+      const values = {
+        'quick-home-name': document.getElementById('home-name')?.value || 'HOME',
+        'quick-away-name': document.getElementById('away-name')?.value || 'AWAY',
+        'quick-home-score': document.getElementById('home-score')?.value || '0',
+        'quick-away-score': document.getElementById('away-score')?.value || '0',
+        'quick-timer': formatTime(totalSeconds)
+      };
+      Object.entries(values).forEach(([id,value]) => { const node=document.getElementById(id); if(node) node.textContent=value; });
+    }
+
+    function updateKitColorLabels() {
+      ['home','away'].forEach(team => {
+        const input=document.getElementById(`${team}-kit-color`),label=document.getElementById(`${team}-kit-color-code`);
+        if (input && label) label.textContent=input.value.toUpperCase();
+      });
+    }
+
+    function updateDisplayButtons() {
+      [
+        ['main-display-button', 'show-main-display'],
+        ['top-display-button', 'show-top-display'],
+        ['goal-scorers-button', 'show-goal-scorers'],
+        ['standings-display-button', 'show-standings-display'],
+        ['kit-colors-display-button', 'show-kit-colors']
+      ].forEach(([buttonId, inputId]) => {
+        const enabled = document.getElementById(inputId).checked;
+        const button = document.getElementById(buttonId);
+        button.classList.toggle('on', enabled);
+        button.classList.toggle('off', !enabled);
+        button.querySelector('.toggle-state').textContent = enabled ? 'เปิด' : 'ปิด';
+        button.setAttribute('aria-pressed', String(enabled));
+      });
+    }
+
+    function toggleScoreboardDisplay(name) {
+      const inputIds = {main:'show-main-display', top:'show-top-display', scorers:'show-goal-scorers', standings:'show-standings-display'};
+      const input = document.getElementById(inputIds[name]);
+      input.checked = !input.checked;
+      if (name !== 'standings' && name !== 'scorers' && input.checked) document.getElementById('show-standings-display').checked = false;
+      if (name === 'standings') toggleStandingsDisplay();
+      else if (name === 'main') toggleMainDisplay();
+      else updateAll();
+    }
+
+    function toggleStandingsDisplay() {
+      if (document.getElementById('show-standings-display').checked) {
+        document.getElementById('show-main-display').checked=false;
+        document.getElementById('show-top-display').checked=false;
+        document.getElementById('show-penalty-display').checked=false;
+        setLineupDisplay('none',false);
+      }
+      updateAll();
+    }
+
+    function toggleKitColorDisplay() {
+      const input=document.getElementById('show-kit-colors');
+      input.checked=!input.checked;
+      updateAll();
+    }
+
+    function toggleMainDisplay() {
+      if (document.getElementById('show-main-display').checked) {
+        document.getElementById('show-standings-display').checked = false;
+        document.getElementById('show-penalty-display').checked = false;
+      }
+      updateAll();
+    }
+
+    function togglePenaltyDisplay() {
+      if (document.getElementById('show-penalty-display').checked) {
+        document.getElementById('show-standings-display').checked = false;
+        document.getElementById('show-main-display').checked = false;
+      }
+      updateAll();
+    }
+
+    function renderPenaltyControl() {
+      ['home', 'away'].forEach(team => {
+        const marks = penalties[team].map(result => result ? '✓' : '✕').join(' ');
+        document.getElementById(`${team}-penalty-result`).textContent = marks || '—';
+      });
+    }
+
+    function addPenalty(team, scored) {
+      penalties[team].push(Boolean(scored));
+      renderPenaltyControl();
+      updateAll();
+    }
+
+    function undoPenalty(team) {
+      penalties[team].pop();
+      renderPenaltyControl();
+      updateAll();
+    }
+
+    function resetPenalties() {
+      if (!confirmSafeAction('รีเซ็ตผลดวลจุดโทษทั้งหมด?')) return;
+      penalties.home.length = 0;
+      penalties.away.length = 0;
+      renderPenaltyControl();
+      updateAll();
+    }
+
+    function toggleLogoInput(team) {
+      const type = document.getElementById(`${team}-logo-type`).value;
+      const urlGroup = document.getElementById(`${team}-url-group`);
+      const fileGroup = document.getElementById(`${team}-file-group`);
+
+      if (type === 'url') {
+        urlGroup.classList.remove('hidden');
+        fileGroup.classList.add('hidden');
+      } else {
+        urlGroup.classList.add('hidden');
+        fileGroup.classList.remove('hidden');
+      }
+      updateAll();
+    }
+
+    function handleFileUpload(team) {
+      const fileInput = document.getElementById(`${team}-logo-file`);
+      const file = fileInput.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          localLogos[team] = e.target.result;
+          updateAll();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function getLogoSource(team) {
+      const type = document.getElementById(`${team}-logo-type`).value;
+      if (type === 'url') {
+        return document.getElementById(`${team}-logo-url`).value;
+      } else {
+        return localLogos[team];
+      }
+    }
+
+    function toggleAddedTimeInput() {
+      updateAll();
+    }
+
+    function updateLineupButtons() {
+      const value = document.getElementById('lineup-display').value;
+      document.querySelectorAll('.lineup-button').forEach(button => {
+        const active = button.dataset.value === value;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    function setLineupDisplay(value, sendUpdate = true) {
+      document.getElementById('lineup-display').value = ['home', 'away'].includes(value) ? value : 'none';
+      if (value === 'home' || value === 'away') document.getElementById('show-standings-display').checked = false;
+      updateLineupButtons();
+      if (sendUpdate) updateAll();
+    }
+
+    function updateAll(restoreRoster = false) {
+      updateDisplayButtons();
+      updateQuickConsole();
+      advanceTimer();
+      const syncUpdatedAt = `${Date.now()}-${++syncSequence}`;
+      lastSyncToken = `${syncClientId}:${syncUpdatedAt}`;
+      const showAddedTime = document.getElementById('show-added-time').checked;
+      const data = {
+        homeName: document.getElementById('home-name').value,
+        awayName: document.getElementById('away-name').value,
+        homeScore: document.getElementById('home-score').value,
+        awayScore: document.getElementById('away-score').value,
+        homeLogo: getLogoSource('home'),
+        awayLogo: getLogoSource('away'),
+        homeKitColor: document.getElementById('home-kit-color').value,
+        awayKitColor: document.getElementById('away-kit-color').value,
+        kitTabOrientation: document.getElementById('kit-tab-orientation').value,
+        showKitColors: document.getElementById('show-kit-colors').checked,
+        showAddedTime: showAddedTime,
+        addedTime: document.getElementById('added-time').value,
+        period: document.getElementById('period').value,
+        matchFormat: activeMatchFormat,
+        showMainDisplay: document.getElementById('show-main-display').checked,
+        showTopDisplay: document.getElementById('show-top-display').checked,
+        showGoalScorers: document.getElementById('show-goal-scorers').checked,
+        showStandingsDisplay: document.getElementById('show-standings-display').checked,
+        showPenaltyDisplay: document.getElementById('show-penalty-display').checked,
+        lineupDisplay: document.getElementById('lineup-display').value,
+        homePenalties: [...penalties.home],
+        awayPenalties: [...penalties.away],
+        homeYellow: Math.max(0, parseInt(document.getElementById('home-yellow').value, 10) || 0),
+        homeRed: Math.max(0, parseInt(document.getElementById('home-red').value, 10) || 0),
+        awayYellow: Math.max(0, parseInt(document.getElementById('away-yellow').value, 10) || 0),
+        awayRed: Math.max(0, parseInt(document.getElementById('away-red').value, 10) || 0),
+        lastGoalEvent: lastGoalEvent,
+        lastCardEvent: lastCardEvent,
+        lastSubstitutionEvent: lastSubstitutionEvent,
+        substitutionChanges: substitutionChanges,
+        redCardedPlayers: redCardedPlayers,
+        goalScorers: goalScorers,
+        ...(restoreRoster ? {
+          homePlayers: latestRosterData.homePlayers || [],
+          awayPlayers: latestRosterData.awayPlayers || [],
+          homeCoach: latestRosterData.homeCoach || '',
+          awayCoach: latestRosterData.awayCoach || '',
+          homeRosterId: latestRosterData.homeRosterId || '',
+          awayRosterId: latestRosterData.awayRosterId || ''
+        } : {}),
+        eventHistory: eventHistory,
+        graphicQueueUntil: graphicQueueUntil,
+        graphicDurations: {
+          goal:Math.max(2,Number(document.getElementById('goal-duration').value)||5.6),
+          card:Math.max(2,Number(document.getElementById('card-duration').value)||5.6),
+          substitution:Math.max(3,Number(document.getElementById('sub-duration').value)||7.1),
+          gap:Math.max(0,Number(document.getElementById('queue-gap').value)||0)
+        },
+        timer: formatTime(totalSeconds),
+        timerRunning: timerRunning,
+        timerUpdatedAt: timerUpdatedAt,
+        syncClientId: syncClientId,
+        syncUpdatedAt: syncUpdatedAt
+      };
+      try {
+        localStorage.setItem('football_scoreboard_state', JSON.stringify({...latestRosterData, ...data}));
+      } catch (_) {}
+      // Displays consume server-confirmed state through polling.
+      updateReadinessChecklist();
+      pendingStateWrites++;
+      // Only an explicit edit to a team field may write it. A score/clock/graphic
+      // action from a stale controller must not overwrite another device's team.
+      const patch = {...data};
+      if (teamFieldBaseline && !restoreRoster) {
+        teamFields.forEach(field => {
+          if (data[field] === teamFieldBaseline[field]) delete patch[field];
+        });
+      }
+      teamFieldBaseline = Object.fromEntries(teamFields.map(field => [field, data[field]]));
+      stateWriteQueue = stateWriteQueue.then(() => serverFetch('/api/state', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(patch)
+      })).catch(() => {}).finally(() => { pendingStateWrites--; });
+    }
+
+    function changeScore(team, delta) {
+      if (delta < 0 && !confirmSafeAction('ลดสกอร์ทีมนี้?')) return;
+      const input = document.getElementById(`${team}-score`);
+      const previous = parseInt(input.value) || 0;
+      let val = previous;
+      val = Math.max(0, val + delta);
+      input.value = val;
+      if (val > previous) {
+        const player = document.getElementById(`${team}-goal-player`).value;
+        lastGoalEvent = {id: Date.now(), kind:'goal', team:team, player:player, matchTime:formatTime(totalSeconds), duration:graphicDuration('goal'), displayAt:scheduleGraphic(graphicDuration('goal'))};
+        goalScorers[team].push({id:lastGoalEvent.id, player:player, minute:Math.max(1,Math.ceil(totalSeconds/60))});
+        addMatchEvent(lastGoalEvent);
+      } else if (val < previous) {
+        goalScorers[team].pop();
+        const index = eventHistory.map(event => event.kind === 'goal' && event.team === team).lastIndexOf(true);
+        if (index >= 0) eventHistory.splice(index, 1);
+        refreshLastEventsFromHistory();
+        renderEventHistory();
+      }
+      updateAll();
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function advanceTimer() {
+      if (!timerRunning || timerUpdatedAt === null) return;
+      const elapsed = Math.max(0, Math.floor((Date.now() - timerUpdatedAt) / 1000));
+      totalSeconds += elapsed;
+      timerUpdatedAt += elapsed * 1000;
+    }
+
+    function paintControlClock() {
+      advanceTimer();
+      document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      updateQuickConsole();
+    }
+
+    function startTimer(skipUpdate = false) {
+      if (!timerRunning) timerUpdatedAt = Date.now();
+      timerRunning = true;
+      if (!timerInterval) timerInterval = setInterval(paintControlClock, 200);
+      paintControlClock();
+      if (!skipUpdate) updateAll();
+    }
+
+    function pauseTimer(skipUpdate = false) {
+      advanceTimer();
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerRunning = false;
+      timerUpdatedAt = Date.now();
+      paintControlClock();
+      if (!skipUpdate) updateAll();
+    }
+
+    function resetTimer() {
+      if (!confirmSafeAction('รีเซ็ตเวลาเป็น 00:00?')) return;
+      pauseTimer(true);
+      totalSeconds = 0;
+      timerUpdatedAt = Date.now();
+      document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      updateAll();
+    }
+
+    function finishMatch() {
+      if (!confirmSafeAction('จบการแข่งขันและเปลี่ยนเป็น FULL TIME?')) return;
+      pauseTimer(true);
+      document.getElementById('period').value = 'FULL TIME';
+      document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      updateAll();
+    }
+
+    function setQuickTime(minutes) {
+      totalSeconds = minutes * 60;
+      timerUpdatedAt = Date.now();
+      document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      updateAll();
+    }
+
+    function changeDiscipline(team, type, delta) {
+      if (delta < 0 && !confirmSafeAction('ลดจำนวนใบของทีมนี้?')) return;
+      const input = document.getElementById(`${team}-${type}`);
+      const previous = parseInt(input.value, 10) || 0;
+      const next = Math.max(0, previous + delta);
+      const selectedPlayer = document.getElementById(`${team}-card-player`).value;
+      input.value = next;
+      if (next > previous) {
+        lastCardEvent = {id:Date.now(), kind:type, team:team, type:type, player:selectedPlayer, matchTime:formatTime(totalSeconds), duration:graphicDuration(type), displayAt:scheduleGraphic(graphicDuration(type))};
+        if (type === 'red') redCardedPlayers[team].push(selectedPlayer || null);
+        addMatchEvent(lastCardEvent);
+      } else if (next < previous && type === 'red') {
+        redCardedPlayers[team].pop();
+        const index = eventHistory.map(event => event.kind === type && event.team === team).lastIndexOf(true);
+        if (index >= 0) eventHistory.splice(index, 1);
+        refreshLastEventsFromHistory();
+        renderEventHistory();
+      } else if (next < previous) {
+        const index = eventHistory.map(event => event.kind === type && event.team === team).lastIndexOf(true);
+        if (index >= 0) eventHistory.splice(index, 1);
+        refreshLastEventsFromHistory();
+        renderEventHistory();
+      }
+      refreshPlayerOptions(latestRosterData);
+      updateAll();
+    }
+
+    function showSubstitution(team) {
+      const playerOut = document.getElementById(`${team}-sub-out`).value;
+      const playerIn = document.getElementById(`${team}-sub-in`).value;
+      if (!playerOut || !playerIn) {
+        alert('กรุณาเลือกผู้เล่นออกและผู้เล่นเข้า');
+        return;
+      }
+      if (playerOut === playerIn) {
+        alert('ผู้เล่นออกและผู้เล่นเข้าต้องเป็นคนละคน');
+        return;
+      }
+      lastSubstitutionEvent = {id:Date.now(), kind:'substitution', team, playerOut, playerIn, time:formatTime(totalSeconds), matchTime:formatTime(totalSeconds), duration:graphicDuration('substitution'), displayAt:scheduleGraphic(graphicDuration('substitution'))};
+      if (!Array.isArray(substitutionChanges[team])) substitutionChanges[team] = [];
+      substitutionChanges[team].push({id:lastSubstitutionEvent.id, playerOut, playerIn});
+      addMatchEvent(lastSubstitutionEvent);
+      refreshPlayerOptions(latestRosterData);
+      updateAll();
+    }
+
+    function setCustomTime() {
+      const minuteInput = document.getElementById('custom-minutes');
+      const secondInput = document.getElementById('custom-seconds');
+      const minutes = Math.max(0, Math.min(999, parseInt(minuteInput.value, 10) || 0));
+      const seconds = Math.max(0, Math.min(59, parseInt(secondInput.value, 10) || 0));
+      minuteInput.value = minutes;
+      secondInput.value = seconds;
+      totalSeconds = (minutes * 60) + seconds;
+      timerUpdatedAt = Date.now();
+      document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+      updateAll();
+    }
+
+    function restoreState(stateData = null, remote = false) {
+      try {
+        const data = stateData || JSON.parse(localStorage.getItem('football_scoreboard_state'));
+        if (!data) return;
+        document.getElementById('home-name').value = data.homeName ?? 'HOME';
+        document.getElementById('away-name').value = data.awayName ?? 'AWAY';
+        document.getElementById('home-score').value = data.homeScore ?? 0;
+        document.getElementById('away-score').value = data.awayScore ?? 0;
+        ['home', 'away'].forEach(team => {
+          const logo = data[`${team}Logo`] || '';
+          const uploaded = logo.startsWith('data:');
+          localLogos[team] = uploaded ? logo : '';
+          document.getElementById(`${team}-logo-url`).value = uploaded ? '' : logo;
+          document.getElementById(`${team}-logo-type`).value = uploaded ? 'file' : 'url';
+          document.getElementById(`${team}-url-group`).classList.toggle('hidden', uploaded);
+          document.getElementById(`${team}-file-group`).classList.toggle('hidden', !uploaded);
+        });
+        document.getElementById('home-kit-color').value = /^#[0-9a-f]{6}$/i.test(data.homeKitColor || '') ? data.homeKitColor : '#1d4ed8';
+        document.getElementById('away-kit-color').value = /^#[0-9a-f]{6}$/i.test(data.awayKitColor || '') ? data.awayKitColor : '#dc2626';
+        document.getElementById('kit-tab-orientation').value = data.kitTabOrientation === 'horizontal' ? 'horizontal' : 'vertical';
+        document.getElementById('show-kit-colors').checked = data.showKitColors === true;
+        updateKitColorLabels();
+        document.getElementById('show-added-time').checked = Boolean(data.showAddedTime);
+        document.getElementById('added-time').value = data.addedTime || 1;
+        applyMatchPreset(data.matchFormat || 'football', false);
+        const restoredPeriod = data.period || 'FIRST HALF';
+        if ([...document.getElementById('period').options].some(option => option.value === restoredPeriod)) document.getElementById('period').value = restoredPeriod;
+        document.getElementById('show-main-display').checked = data.showMainDisplay !== false;
+        document.getElementById('show-top-display').checked = Boolean(data.showTopDisplay);
+        document.getElementById('show-goal-scorers').checked = Boolean(data.showGoalScorers);
+        document.getElementById('show-standings-display').checked = Boolean(data.showStandingsDisplay);
+        setLineupDisplay(data.lineupDisplay || 'none', false);
+        document.getElementById('show-penalty-display').checked = Boolean(data.showPenaltyDisplay);
+        if (document.getElementById('show-penalty-display').checked) {
+          document.getElementById('show-main-display').checked = false;
+        }
+        if (document.getElementById('show-standings-display').checked) {
+          document.getElementById('show-main-display').checked=false;
+          document.getElementById('show-top-display').checked=false;
+          document.getElementById('show-penalty-display').checked=false;
+          setLineupDisplay('none',false);
+        }
+        penalties.home.length = 0;
+        penalties.away.length = 0;
+        penalties.home.push(...(Array.isArray(data.homePenalties) ? data.homePenalties.map(Boolean) : []));
+        penalties.away.push(...(Array.isArray(data.awayPenalties) ? data.awayPenalties.map(Boolean) : []));
+        renderPenaltyControl();
+        document.getElementById('home-yellow').value = Math.max(0, Number(data.homeYellow) || 0);
+        document.getElementById('home-red').value = Math.max(0, Number(data.homeRed) || 0);
+        document.getElementById('away-yellow').value = Math.max(0, Number(data.awayYellow) || 0);
+        document.getElementById('away-red').value = Math.max(0, Number(data.awayRed) || 0);
+        lastGoalEvent = data.lastGoalEvent || null;
+        lastCardEvent = data.lastCardEvent || null;
+        lastSubstitutionEvent = data.lastSubstitutionEvent || null;
+        substitutionChanges = {
+          home:Array.isArray(data.substitutionChanges?.home) ? data.substitutionChanges.home : [],
+          away:Array.isArray(data.substitutionChanges?.away) ? data.substitutionChanges.away : []
+        };
+        redCardedPlayers = {
+          home:Array.isArray(data.redCardedPlayers?.home) ? data.redCardedPlayers.home : [],
+          away:Array.isArray(data.redCardedPlayers?.away) ? data.redCardedPlayers.away : []
+        };
+        goalScorers = {
+          home:Array.isArray(data.goalScorers?.home) ? data.goalScorers.home : [],
+          away:Array.isArray(data.goalScorers?.away) ? data.goalScorers.away : []
+        };
+        eventHistory = Array.isArray(data.eventHistory) ? data.eventHistory : [];
+        graphicQueueUntil = Math.max(Date.now(), Number(data.graphicQueueUntil) || 0);
+        const durations = data.graphicDurations || {};
+        document.getElementById('goal-duration').value = durations.goal || 5.6;
+        document.getElementById('card-duration').value = durations.card || 5.6;
+        document.getElementById('sub-duration').value = durations.substitution || 7.1;
+        document.getElementById('queue-gap').value = durations.gap ?? .25;
+        renderEventHistory();
+        refreshPlayerOptions(data);
+        const parts = String(data.timer || '00:00').split(':').map(Number);
+        totalSeconds = (parts[0] || 0) * 60 + (parts[1] || 0);
+        timerRunning = Boolean(data.timerRunning);
+        timerUpdatedAt = Number(data.timerUpdatedAt) || Date.now();
+        clearInterval(timerInterval);
+        timerInterval = null;
+        if (timerRunning) {
+          startTimer(true);
+        }
+        if (data.syncClientId && data.syncUpdatedAt) lastSyncToken = `${data.syncClientId}:${data.syncUpdatedAt}`;
+        updateDisplayButtons();
+        document.getElementById('timer-display').innerText = formatTime(totalSeconds);
+        updateQuickConsole();
+        teamFieldBaseline = {
+          homeName: document.getElementById('home-name').value,
+          awayName: document.getElementById('away-name').value,
+          homeLogo: getLogoSource('home'), awayLogo: getLogoSource('away'),
+          homeKitColor: document.getElementById('home-kit-color').value,
+          awayKitColor: document.getElementById('away-kit-color').value
+        };
+      } catch (_) {}
+    }
+
+    function initializeCollapsibleCards() {
+      document.querySelectorAll('.card').forEach((card, index) => {
+        const title = card.querySelector(':scope > h4');
+        if (!title || card.querySelector(':scope > .card-header')) return;
+
+        const header = document.createElement('div');
+        header.className = 'card-header';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'collapse-button';
+        button.innerHTML = '&#9662;';
+        button.setAttribute('aria-label', 'ย่อหรือขยายส่วนนี้');
+        const resetButton = document.createElement('button');
+        resetButton.type = 'button';
+        resetButton.className = 'reset-section-button';
+        resetButton.innerHTML = '&#8635;';
+        resetButton.title = 'รีเซ็ตส่วนนี้';
+        resetButton.setAttribute('aria-label', 'รีเซ็ตส่วนนี้');
+
+        title.before(header);
+        header.append(title, resetButton, button);
+        const content = document.createElement('div');
+        content.className = 'card-content';
+        while (header.nextSibling) content.appendChild(header.nextSibling);
+        card.appendChild(content);
+
+        const storageKey = `scoreboard_control_section_${index}`;
+        try {
+          if (localStorage.getItem(storageKey) === 'collapsed') card.classList.add('collapsed');
+        } catch (_) {}
+
+        header.addEventListener('click', () => {
+          card.classList.toggle('collapsed');
+          const isCollapsed = card.classList.contains('collapsed');
+          button.setAttribute('aria-expanded', String(!isCollapsed));
+          try { localStorage.setItem(storageKey, isCollapsed ? 'collapsed' : 'expanded'); } catch (_) {}
+        });
+        resetButton.addEventListener('click', event => {
+          event.stopPropagation();
+          resetControlSection(card);
+        });
+        button.setAttribute('aria-expanded', String(!card.classList.contains('collapsed')));
+      });
+    }
+
+    function resetControlSection(card) {
+      if (!confirmSafeAction('รีเซ็ตข้อมูลทั้งหมดในส่วนนี้?')) return;
+      card.querySelectorAll('input, select, textarea').forEach(field => {
+        if (field.type === 'file') field.value = '';
+        else if (field.type === 'checkbox') field.checked = field.defaultChecked;
+        else if (field.tagName === 'SELECT') field.selectedIndex = 0;
+        else field.value = field.defaultValue;
+      });
+
+      if (card.querySelector('#home-logo-file')) {
+        localLogos.home = '';
+        document.getElementById('home-url-group').classList.remove('hidden');
+        document.getElementById('home-file-group').classList.add('hidden');
+      }
+      if (card.querySelector('#away-logo-file')) {
+        localLogos.away = '';
+        document.getElementById('away-url-group').classList.remove('hidden');
+        document.getElementById('away-file-group').classList.add('hidden');
+      }
+      if (card.querySelector('#home-penalty-result')) {
+        penalties.home.length = 0;
+        penalties.away.length = 0;
+        renderPenaltyControl();
+      }
+      if (card.querySelector('#home-sub-out')) {
+        substitutionChanges = {home:[], away:[]};
+        lastSubstitutionEvent = null;
+        eventHistory = eventHistory.filter(event => event.kind !== 'substitution');
+        refreshPlayerOptions(latestRosterData);
+      }
+      if (card.querySelector('#home-score')) {
+        goalScorers = {home:[], away:[]};
+        eventHistory = eventHistory.filter(event => event.kind !== 'goal');
+      }
+      if (card.querySelector('#home-card-player')) {
+        redCardedPlayers = {home:[], away:[]};
+        eventHistory = eventHistory.filter(event => event.kind !== 'yellow' && event.kind !== 'red');
+        refreshPlayerOptions(latestRosterData);
+      }
+      if (card.querySelector('#event-history-list')) eventHistory = [];
+      if (card.querySelector('#match-format')) applyMatchPreset('football', false);
+      if (card.querySelector('#safe-mode')) saveSafeMode();
+      if (card.querySelector('#home-kit-color')) updateKitColorLabels();
+      if (card.querySelector('#timer-display')) {
+        pauseTimer(true);
+        totalSeconds = 0;
+        timerUpdatedAt = Date.now();
+        document.getElementById('timer-display').textContent = formatTime(totalSeconds);
+      }
+      refreshLastEventsFromHistory();
+      renderEventHistory();
+      updateAll();
+    }
+
+    channel.onmessage = (event) => {
+      if (event.data && event.data.type === 'request-state') refreshControlFromServer();
+    };
+
+    async function loadServerState() {
+      try {
+        const response = await serverFetch('/api/state', {cache:'no-store'});
+        const data = await response.json();
+        if (data && Object.keys(data).length) {
+          localStorage.setItem('football_scoreboard_state', JSON.stringify(data));
+          return true;
+        }
+      } catch (_) {}
+      return false;
+    }
+
+    async function refreshControlFromServer() {
+      if (stateReadInFlight || pendingStateWrites) return;
+      stateReadInFlight = true;
+      const sequenceAtStart = syncSequence;
+      try {
+        const response = await serverFetch('/api/state', {cache:'no-store'});
+        const data = await response.json();
+        if (pendingStateWrites || sequenceAtStart !== syncSequence) return;
+        refreshPlayerOptions(data);
+        const token = data.syncClientId && data.syncUpdatedAt ? `${data.syncClientId}:${data.syncUpdatedAt}` : '';
+        const teamChanged = teamFieldBaseline && teamFields.some(field =>
+          String(data[field] ?? '') !== String(teamFieldBaseline[field] ?? ''));
+        if ((token && token !== lastSyncToken) || teamChanged) {
+          localStorage.setItem('football_scoreboard_state', JSON.stringify(data));
+          restoreState(data, true);
+        }
+      } catch (_) {}
+      finally { stateReadInFlight = false; }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) { paintControlClock(); refreshControlFromServer(); }
+    });
+
+    let obsSocket = null;
+    let obsReady = false;
+    let obsPreviousLiveScene = localStorage.getItem('football_scoreboard_obs_previous_live_scene') || '';
+    const obsPending = new Map();
+
+    function setObsStatus(message, online = false) {
+      document.getElementById('obs-status').textContent = message;
+      document.getElementById('obs-status-row').classList.toggle('online', online);
+    }
+
+    async function sha256Base64(value) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+      let binary = ''; new Uint8Array(digest).forEach(byte => binary += String.fromCharCode(byte));
+      return btoa(binary);
+    }
+
+    async function connectObsWebSocket() {
+      const host = document.getElementById('obs-host').value.trim() || location.hostname || '127.0.0.1';
+      const port = Math.max(1, Number(document.getElementById('obs-port').value) || 4455);
+      const password = document.getElementById('obs-password').value;
+      localStorage.setItem('football_scoreboard_obs_host', host);
+      localStorage.setItem('football_scoreboard_obs_port', String(port));
+      ['replay-scene','replay-source','live-scene'].forEach(name => localStorage.setItem(`football_scoreboard_obs_${name}`, document.getElementById(`obs-${name}`).value.trim()));
+      if (obsSocket) try { obsSocket.close(); } catch (_) {}
+      obsReady = false; setObsStatus(`กำลังเชื่อมต่อ ws://${host}:${port}…`);
+      try {
+        obsSocket = new WebSocket(`ws://${host}:${port}`);
+        const connectionTimeout = setTimeout(() => {
+          if (!obsReady && obsSocket?.readyState !== WebSocket.OPEN) {
+            setObsStatus(`ไม่พบ OBS WebSocket ที่ ${host}:${port} · เปิด Tools > WebSocket Server Settings ใน OBS`);
+            try { obsSocket.close(); } catch (_) {}
+          }
+        }, 4000);
+        obsSocket.onmessage = async message => {
+          const packet = JSON.parse(message.data);
+          if (packet.op === 0) {
+            const identify = {rpcVersion:1};
+            if (packet.d.authentication) {
+              const secret = await sha256Base64(password + packet.d.authentication.salt);
+              identify.authentication = await sha256Base64(secret + packet.d.authentication.challenge);
+            }
+            obsSocket.send(JSON.stringify({op:1,d:identify}));
+          } else if (packet.op === 2) {
+            clearTimeout(connectionTimeout); obsReady = true; setObsStatus('เชื่อมต่อ OBS WebSocket แล้ว', true);
+            obsRequest('GetReplayBufferStatus').then(data => setObsStatus(data.outputActive ? 'OBS เชื่อมต่อแล้ว · Replay Buffer กำลังทำงาน' : 'OBS เชื่อมต่อแล้ว · Replay Buffer ยังไม่เริ่ม', true)).catch(()=>{});
+          } else if (packet.op === 7) {
+            const pending = obsPending.get(packet.d.requestId); if (!pending) return;
+            obsPending.delete(packet.d.requestId);
+            if (packet.d.requestStatus?.result) pending.resolve(packet.d.responseData || {});
+            else pending.reject(new Error(packet.d.requestStatus?.comment || 'OBS request failed'));
+          }
+        };
+        obsSocket.onerror = () => {
+          if (!obsReady) setObsStatus(`เชื่อมต่อ ${host}:${port} ไม่สำเร็จ · ตรวจว่าเปิด WebSocket Server และใช้พอร์ตตรงกัน`);
+        };
+        obsSocket.onclose = event => {
+          clearTimeout(connectionTimeout); obsReady=false;
+          const messages = {
+            4009:'รหัสผ่าน OBS WebSocket ไม่ถูกต้อง',
+            4008:'OBS ปฏิเสธการเชื่อมต่อ: ข้อมูล Identify ไม่ถูกต้อง',
+            4006:'OBS WebSocket ใช้ Protocol คนละเวอร์ชัน'
+          };
+          const fallback = event.code === 1006
+            ? `ติดต่อ OBS ที่ ${host}:${port} ไม่ได้ · WebSocket Server ยังไม่เปิด พอร์ตไม่ตรง หรือ Firewall ปิดกั้น`
+            : `OBS ตัดการเชื่อมต่อ (รหัส ${event.code}${event.reason ? `: ${event.reason}` : ''})`;
+          setObsStatus(messages[event.code] || fallback);
+        };
+      } catch (_) { setObsStatus('เปิดการเชื่อมต่อ OBS ไม่สำเร็จ'); }
+    }
+
+    function obsRequest(requestType, requestData = {}) {
+      if (!obsReady || !obsSocket || obsSocket.readyState !== WebSocket.OPEN) {
+        setObsStatus('กรุณาเชื่อมต่อ OBS ก่อน'); return Promise.reject(new Error('OBS not connected'));
+      }
+      const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      return new Promise((resolve,reject) => {
+        const timeout=setTimeout(()=>{obsPending.delete(requestId);reject(new Error('OBS timeout'));},5000);
+        obsPending.set(requestId,{resolve:data=>{clearTimeout(timeout);resolve(data);},reject:error=>{clearTimeout(timeout);setObsStatus(error.message);reject(error);}});
+        obsSocket.send(JSON.stringify({op:6,d:{requestType,requestId,requestData}}));
+      });
+    }
+
+    async function saveObsReplay() {
+      try { await obsRequest('SaveReplayBuffer'); setObsStatus('สั่งบันทึก Replay สำเร็จ', true); }
+      catch (error) { setObsStatus(`บันทึก Replay ไม่สำเร็จ: ${error.message}`); }
+    }
+
+    async function obsReplayAction(requestType, successMessage) {
+      try { await obsRequest(requestType); setObsStatus(successMessage, true); }
+      catch (error) { setObsStatus(`คำสั่ง Replay ไม่สำเร็จ: ${error.message}`); }
+    }
+
+    async function getLastObsReplay() {
+      try {
+        const data = await obsRequest('GetLastReplayBufferReplay');
+        setObsStatus(data.savedReplayPath ? `คลิปล่าสุด: ${data.savedReplayPath}` : 'OBS ยังไม่มีคลิป Replay ล่าสุด', true);
+      } catch (error) { setObsStatus(`อ่านข้อมูล Replay ไม่สำเร็จ: ${error.message}`); }
+    }
+
+    async function playLastObsReplay() {
+      const sceneName=document.getElementById('obs-replay-scene').value.trim(),inputName=document.getElementById('obs-replay-source').value.trim();
+      if (!sceneName || !inputName) { setObsStatus('กรุณากำหนดชื่อ Replay Scene และ Media Source'); return; }
+      try {
+        const replay=await obsRequest('GetLastReplayBufferReplay');
+        if (!replay.savedReplayPath) throw new Error('ยังไม่มีไฟล์ Replay');
+        const currentScene=await obsRequest('GetCurrentProgramScene');
+        if (currentScene.currentProgramSceneName && currentScene.currentProgramSceneName !== sceneName) {
+          obsPreviousLiveScene=currentScene.currentProgramSceneName;
+          localStorage.setItem('football_scoreboard_obs_previous_live_scene',obsPreviousLiveScene);
+          document.getElementById('obs-live-scene').value=obsPreviousLiveScene;
+        }
+        await ensureReplaySceneAndSource(sceneName,inputName,replay.savedReplayPath);
+        await obsRequest('SetCurrentProgramScene',{sceneName});
+        await obsRequest('TriggerMediaInputAction',{inputName,mediaAction:'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART'});
+        setObsStatus('กำลังเล่น Replay ล่าสุด',true);
+      } catch(error) { setObsStatus(`เล่น Replay ไม่สำเร็จ: ${error.message}`); }
+    }
+
+    async function ensureReplaySceneAndSource(sceneName,inputName,filePath) {
+      const sceneList=await obsRequest('GetSceneList');
+      const sceneExists=(sceneList.scenes||[]).some(scene=>scene.sceneName===sceneName);
+      if (!sceneExists) {
+        await obsRequest('CreateScene',{sceneName});
+        setObsStatus(`สร้าง Scene “${sceneName}” อัตโนมัติแล้ว`,true);
+      }
+      const inputList=await obsRequest('GetInputList');
+      const inputExists=(inputList.inputs||[]).some(input=>input.inputName===inputName);
+      const inputSettings={local_file:filePath,is_local_file:true,looping:false,restart_on_activate:true,clear_on_media_end:false};
+      if (!inputExists) {
+        await obsRequest('CreateInput',{sceneName,inputName,inputKind:'ffmpeg_source',inputSettings,sceneItemEnabled:true});
+        setObsStatus(`สร้าง Media Source “${inputName}” อัตโนมัติแล้ว`,true);
+      } else {
+        await obsRequest('SetInputSettings',{inputName,inputSettings,overlay:true});
+        try {
+          await obsRequest('GetSceneItemId',{sceneName,sourceName:inputName});
+        } catch (_) {
+          await obsRequest('CreateSceneItem',{sceneName,sourceName:inputName,sceneItemEnabled:true});
+        }
+      }
+    }
+
+    async function returnToLiveObs() {
+      const configured=document.getElementById('obs-live-scene').value.trim();
+      try {
+        const sceneList=await obsRequest('GetSceneList');
+        const names=(sceneList.scenes||[]).map(scene=>scene.sceneName);
+        const sceneName=[obsPreviousLiveScene,configured].find(name=>name&&names.includes(name));
+        if (!sceneName) throw new Error(`ไม่พบ Scene ภาพสด · Scene ที่มี: ${names.join(', ')||'ไม่มี'}`);
+        await obsRequest('SetCurrentProgramScene',{sceneName});
+        document.getElementById('obs-live-scene').value=sceneName;
+        setObsStatus(`กลับสู่ภาพสด “${sceneName}” แล้ว`,true);
+      }
+      catch(error) { setObsStatus(`กลับภาพสดไม่สำเร็จ: ${error.message}`); }
+    }
+
+    window.onload = async () => {
+      const cloudCard=document.createElement('div');cloudCard.className='card full-width';cloudCard.id='cloud-panel';cloudCard.innerHTML='<h4>เลือกนัดจากเว็บ</h4>';
+      document.querySelector('.grid').prepend(cloudCard);
+      ['home','away'].forEach(side=>document.getElementById(side+'-name').closest('.card').classList.add('cloud-managed-field'));
+      initializeCollapsibleCards();
+      organizeControlCards();
+      document.getElementById('safe-mode').checked = localStorage.getItem('football_scoreboard_safe_mode') === '1';
+      document.getElementById('obs-host').value = localStorage.getItem('football_scoreboard_obs_host') || location.hostname || '127.0.0.1';
+      document.getElementById('obs-port').value = localStorage.getItem('football_scoreboard_obs_port') || '4455';
+      document.getElementById('obs-replay-scene').value = localStorage.getItem('football_scoreboard_obs_replay-scene') || 'REPLAY';
+      document.getElementById('obs-replay-source').value = localStorage.getItem('football_scoreboard_obs_replay-source') || 'Replay Media';
+      document.getElementById('obs-live-scene').value = localStorage.getItem('football_scoreboard_obs_live-scene') || 'LIVE';
+      const loaded = await loadServerState();
+      restoreState();
+      updateDisplayButtons();
+      updateQuickConsole();
+      setInterval(refreshControlFromServer, 500);
+      setInterval(() => createBackup(false), 30000);
+      setInterval(updateReadinessChecklist, 1000);
+      updateReadinessChecklist();
+    };
+    window.applyCloudMatch = async patch => {
+      await stateWriteQueue;
+      const latest=await (await serverFetch('/api/state',{cache:'no-store'})).json();
+      if(latest.timerRunning) throw new Error('หยุดเวลาก่อนดึงข้อมูล');
+      if(latest.cloudMatchId!==patch.cloudMatchId && (Number(latest.homeScore)||Number(latest.awayScore)||(latest.eventHistory||[]).length||(latest.timer&&latest.timer!=='00:00'))) throw new Error('แมตช์เปลี่ยนแปลงระหว่างดาวน์โหลด กรุณาตรวจข้อมูลปัจจุบันก่อน');
+      pendingStateWrites++;syncSequence++;
+      try {
+        await serverFetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...patch,syncClientId:'cloud-control',syncUpdatedAt:Date.now()+'-'+Math.random()})});
+        const fresh=await (await serverFetch('/api/state',{cache:'no-store'})).json();
+        localStorage.setItem('football_scoreboard_state',JSON.stringify(fresh));restoreState(fresh,true);
+      } finally {pendingStateWrites--;}
+    };
+  </script>
+</body>
+</html>
