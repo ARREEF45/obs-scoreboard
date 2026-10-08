@@ -1,5 +1,15 @@
 # สนาม · Football Manager
 
+## บันทึกผลบนเว็บและหน้าสาธารณะ
+
+- คู่ที่ไม่ได้ถ่ายทอดสด: โปรแกรมการแข่งขัน → บันทึกผล → กรอกสกอร์และเลือกจบการแข่งขัน ตารางคะแนนจะคำนวณจากผลนี้ สามารถเลือกกลับไปคำนวณสกอร์จากเหตุการณ์ได้
+- สกอร์รวมไม่สร้างสถิตินักเตะขึ้นเอง ให้บันทึกประตู แอสซิสต์ และใบเป็นเหตุการณ์เพิ่มเติมหากต้องการสถิติรายบุคคล
+- ติดตั้ง `supabase/migrations/004_public_competitions.sql` หนึ่งครั้งหลัง SQL 003 จากนั้นในหน้ารายการแข่งขัน กด **เปิดสาธารณะ** ของรายการที่ต้องการเผยแพร่
+- ผู้ชมเปิด `https://arreef45.github.io/obs-scoreboard/manager/public.html` โดยไม่ต้องเข้าสู่ระบบ ดูโปรแกรม ผล ตารางคะแนน ทีม นักเตะ รายชื่อในแมตช์ และสถิติได้ มีลิงก์เฉพาะรายการผ่าน `?competition=UUID`
+- ข้อมูลสาธารณะอ่านผ่านฟังก์ชันที่เลือกเฉพาะข้อมูลกีฬา ไม่เปิดสิทธิ์อ่านหรือเขียนตารางส่วนตัวให้ผู้ชม การกดปิดสาธารณะทำให้คำขอใหม่ไม่รับข้อมูลรายการนั้น หน้าเว็บรีเฟรชทุก 10 วินาที
+- โลโก้สาธารณะเป็นสำเนาขนาดย่อจากโลโก้ทีม ไม่เผยแพร่ไฟล์ส่วนตัวใน Storage ทั้ง bucket ถ้าเพิ่มทีมเข้ารายการที่เผยแพร่แล้วและยังไม่มีโลโก้ ให้ปิดแล้วเปิดสาธารณะอีกครั้งเพื่อเตรียมโลโก้ทีมใหม่
+- ทดสอบ: `npm test`, `node tests/browser.e2e.js`, `node tests/public.e2e.mjs` หลัง `npm run build` โดยการทดสอบใช้ข้อมูลจำลอง
+
 เว็บภาษาไทยสำหรับคอมและมือถือ ใช้ Supabase เก็บข้อมูลและเข้าสู่ระบบ แยกจากไฟล์ OBS Portable เดิม ไม่อัปโหลดข้อมูลทีมจริงหรือไฟล์สำรองขึ้น GitHub
 
 ## ฟีเจอร์
@@ -53,6 +63,7 @@ npm run preview
 
 ไฟล์พร้อมโฮสต์อยู่ใน `dist/` ใช้ static hosting ได้ เช่น GitHub Pages โดย `base: './'` รองรับ subdirectory ของ repository ส่วนรหัสผ่าน/ข้อมูลทีมอยู่ใน Supabase ไม่อยู่ในไฟล์เว็บ
 
+GitHub เก็บ source, lockfile, migrations และ tests เท่านั้น `dist`, `.env`, `node_modules` และภาพทดสอบถูก ignore การมี source บน GitHub ยังไม่เท่ากับเผยแพร่เว็บไซต์ ต้องนำผล build ไปโฮสต์และกำหนดค่า Supabase ก่อน
 
 ## ขั้นตอนใช้งาน
 
@@ -93,11 +104,3 @@ npm run test:e2e
 Browser test ใช้ Chrome/Edge ที่ติดตั้งไว้บน Windows หรือกำหนด `BROWSER_PATH` บน OS อื่น; หากไม่มี browser ในเครื่องใช้ `npx playwright-core install chromium` ก่อน
 
 การทดสอบในเครื่องไม่แทนการทดสอบ Supabase Cloud จริง ต้องตรวจ Authentication, Storage และเปิดใช้งาน migration บนโปรเจกต์ปลายทางก่อนใช้งานจริง
-
-## Published manager
-
-The production app is served at https://arreef45.github.io/obs-scoreboard/manager/ using the existing GitHub Pages deployment from main. The root OBS HTML files remain available at their existing URLs.
-
-To update: configure the project URL and publishable key in `web-manager/.env.local`, run `npm ci` and `npm run build` inside `web-manager`, then replace the contents of the root `manager/` directory with `web-manager/dist/` and commit the source and generated files together. Do not include `.env.local`, passwords or service-role keys. Publishable keys are included in the browser build by design.
-
-The Supabase Auth endpoint accepts the configured publishable key, and all seven table endpoints deny anonymous access. Authenticated CRUD, storage policies and database functions still require verification with an administrator account. Sign in with the same account on desktop and mobile.

@@ -14,6 +14,8 @@ await db.exec(
 await db.exec(
   fs.readFileSync("supabase/migrations/001_football_manager.sql", "utf8"),
 );
+await db.exec(fs.readFileSync('supabase/migrations/003_broadcast_results.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/004_public_competitions.sql','utf8'));
 await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
 const seeded = await db.query(
   "insert into fm_teams(name) values('Bangkok FC'),('South United') returning *",
@@ -214,6 +216,11 @@ try {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("**/fonts.googleapis.com/**", (route) => route.abort());
+  await page.route('https://ascxzymhwswfwpjwzcdx.supabase.co/**',async route=>{
+    const req=route.request(),url=new URL(req.url());
+    const response=await page.request.fetch(base+url.pathname+url.search,{method:req.method(),headers:req.headers(),data:req.postData()||undefined});
+    await route.fulfill({response});
+  });
   await page.addInitScript(
     (config) =>
       localStorage.setItem("football.cloud.config", JSON.stringify(config)),
@@ -252,7 +259,7 @@ try {
     .getByRole("button", { name: "บันทึก", exact: true })
     .click();
   await page.locator("#modal").waitFor({ state: "hidden" });
-  assert.equal(await page.locator(".match-head .score").textContent(), "1 : 0");
+  await page.waitForFunction(()=>document.querySelector('.match-head .score')?.textContent==='1 : 0');
   await page.getByRole("button", { name: "สถิตินักเตะ", exact: true }).click();
   assert.match(await page.locator("tbody").textContent(), /Striker/);
   const striker = page.locator("tr").filter({ hasText: "Striker" });
@@ -271,7 +278,9 @@ try {
   await page
     .getByRole("button", { name: "โปรแกรมการแข่งขัน", exact: true })
     .click();
-  await page.getByRole("button", { name: "แก้ไข", exact: true }).click();
+  await page.getByRole("button", { name: "บันทึกผล", exact: true }).click();
+  await page.getByLabel('สกอร์ทีมเหย้า',{exact:true}).fill('3');
+  await page.getByLabel('สกอร์ทีมเยือน',{exact:true}).fill('2');
   await page.getByLabel("สถานะ", { exact: true }).selectOption("finished");
   await page
     .locator("#modal")

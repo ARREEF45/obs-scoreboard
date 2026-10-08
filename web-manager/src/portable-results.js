@@ -3,6 +3,7 @@ export function resultOf(state) {
   if(!Number.isInteger(home)||!Number.isInteger(away)||home<0||away<0||home>999||away>999)throw Error('สกอร์ไม่ถูกต้อง');
   return {home,away,status:state.period==='FULL TIME'?'finished':state.timerRunning||state.timer&&state.timer!=='00:00'||home||away?'live':'scheduled',
     clock:{timer:/^\d{1,3}:\d{2}$/.test(state.timer||'')?state.timer:'00:00',running:!!state.timerRunning,anchor:Number(state.timerUpdatedAt)||0,period:state.period||'FIRST HALF',added:state.showAddedTime?Number(state.addedTime)||0:0},
+    events:(state.eventHistory||[]).map(e=>({id:String(e.id||''),kind:String(e.kind||''),team:e.team==='away'?'away':'home',player:String(e.player||''),playerOut:String(e.playerOut||''),playerIn:String(e.playerIn||''),matchTime:String(e.matchTime||'00:00')})),
     heartbeat:state.timerRunning?Math.floor(Date.now()/10000):0};
 }
 // Queue is scoped to the authenticated owner. It survives browser reloads and keeps old matches until acknowledged.
