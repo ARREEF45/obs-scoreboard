@@ -1,4 +1,7 @@
 import "./style.css";
+import {competitionTools} from './competition-tools.js';
+import {competitionLabel,competitionTree,stageLabel} from './tournaments.js';
+import {groupStandingsHTML} from './group-standings.js';
 import { broadcastEventsHTML, emptyEventsHTML } from './broadcast-events.js';
 import { clockText } from './match-clock.js';
 import { recoveryRequested, recoveryForm, requestRecovery } from "./recovery.js";
@@ -16,7 +19,6 @@ import {
   score,
   standings,
   playerStats,
-  roundRobin,
   kindLabels,
   statusLabels,
 } from "./domain.js";
@@ -93,6 +95,7 @@ function notify(text, error = false) {
   );
 }
 function message(error) {
+  if(error.code==='PGRST204'||error.code==='PGRST202')return 'ฐานข้อมูลยังไม่รองรับส่วนนี้ กรุณาติดตั้ง SQL 005_competition_structure.sql หลังไฟล์ 004 แล้วรีเฟรช';
   if (error.code === "23503")
     return "ข้อมูลนี้เชื่อมกับนักเตะ รายชื่อ หรือเหตุการณ์ในแมตช์แล้ว กรุณาตรวจรายการที่เกี่ยวข้อง";
   if (error.code === "23505")
@@ -143,7 +146,7 @@ function options(rows, value = "", blank = "เลือก…") {
   );
 }
 function chooseCompetition() {
-  return `<select id="competition-filter" aria-label="รายการแข่งขัน">${options(db.competitions, competition, "ทุกรายการ")}</select>`;
+  return `<select id="competition-filter" aria-label="รายการแข่งขัน">${options(competitionTree(db.competitions).map(c=>({...c,name:"  ".repeat(c.depth)+(c.depth?"↳ ":"")+competitionLabel(c)})), competition, "ทุกรายการ")}</select>`;
 }
 function table(headers, rows) {
   return rows.length
@@ -173,7 +176,7 @@ function matchRows(list) {
         const s = score(m, db.events);
         return [
           date(m.kickoff),
-          `${escape(db.competitions.find((c) => c.id === m.competition_id)?.name)} · ${m.round}`,
+          `${escape(competitionLabel(db.competitions.find((c) => c.id === m.competition_id)))} · ${escape(stageLabel(m))}`,
           `${escape(team(m.home_id)?.name)} — ${escape(team(m.away_id)?.name)}`,
           `<span class="score">${s.home} : ${s.away}</span>`,
           badge(m.status),
@@ -214,11 +217,13 @@ function content() {
       ]),
     )}</div>`;
   if (view === "competitions")
-    return `<div class="toolbar"><p class="muted">สร้างรายการ แล้วลงทะเบียนทีมก่อนจัดโปรแกรม</p>${button("+ เพิ่มรายการ", "edit-competitions", "", "primary")}</div><div class="cards">${db.competitions.map((c) => `<article class="team-card"><h2>${escape(c.name)}</h2><p class="muted">${escape(c.season)} · ${db.entries.filter((e) => e.competition_id === c.id).length} ทีม</p><div class="actions">${button("แก้ไข", "edit-competitions", c.id)}${button("ทีมที่เข้าร่วม", "entries", c.id)}${button(c.is_public ? "ปิดสาธารณะ" : "เปิดสาธารณะ", "publish", c.id)}<a href="./public.html?competition=${escape(c.id)}" target="_blank" rel="noopener">Public</a></div></article>`).join("")}</div>`;
+    return `<div class="toolbar"><p class="muted">สร้างรายการ แล้วลงทะเบียนทีมก่อนจัดโปรแกรม</p>${button("+ เพิ่มรายการ", "edit-competitions", "", "primary")}</div><div class="cards">${competitionTree(db.competitions).map((c) => `<article class="team-card"><h2>${escape(c.name)}</h2>${competitions.extra(c)}<p class="muted">${escape(c.season)} · ${db.entries.filter((e) => e.competition_id === c.id).length} ทีม</p><div class="actions">${button("แก้ไข", "edit-competitions", c.id)}${button("ทีมที่เข้าร่วม", "entries", c.id)}${button(c.is_public ? "ปิดสาธารณะ" : "เปิดสาธารณะ", "publish", c.id)}<a href="./public.html?competition=${escape(c.id)}" target="_blank" rel="noopener">Public</a></div></article>`).join("")}</div>`;
   if (view === "matches")
-    return `<div class="panel"><div class="toolbar">${chooseCompetition()}<div class="actions">${button("สร้างโปรแกรมพบกันหมด", "schedule")}${button("+ เพิ่มแมตช์", "edit-matches", "", "primary")}</div></div>${matchRows(db.matches.filter((m) => !competition || m.competition_id === competition))}</div>`;
+    return `<div class="panel"><div class="toolbar">${chooseCompetition()}<div class="actions">${button("สร้างโปรแกรม / รอบถัดไป", "schedule")}${button("+ เพิ่มแมตช์", "edit-matches", "", "primary")}</div></div>${matchRows(db.matches.filter((m) => !competition || m.competition_id === competition))}</div>`;
   if (view === "standings") {
     const c = comp();
+    const grouped=groupStandingsHTML(c,db.teams,db.matches,db.events);
+    if(grouped!==null)return `<div class="toolbar">${chooseCompetition()}</div>${grouped}`;
     const rows = c
       ? standings(
           c,
@@ -401,7 +406,8 @@ function edit(tableName, id) {
   if (tableName === "competitions")
     fields =
       input("name", "ชื่อรายการ", r.name, "text", "required") +
-      input("season", "ฤดูกาล", r.season) +
+      input("season", "ฤดูกาล / ปี / ครั้งที่จัด", r.season) +
+      competitions.fields(r) +
       input(
         "win_points",
         "คะแนนชนะ",
@@ -429,7 +435,7 @@ function edit(tableName, id) {
       db.entries.some((e) => e.competition_id === cid && e.team_id === t.id),
     );
     fields =
-      select("competition_id", "รายการ", db.competitions, cid) +
+      select("competition_id", "รายการ", db.competitions.map(c=>({...c,name:competitionLabel(c)})), cid) +
       select("home_id", "ทีมเหย้า", eligible, r.home_id) +
       select("away_id", "ทีมเยือน", eligible, r.away_id) +
       input(
@@ -444,6 +450,8 @@ function edit(tableName, id) {
       ) +
       input("venue", "สนาม", r.venue) +
       input("round", "รอบ", r.round || 1, "number", 'min="1" required') +
+      select('stage','ช่วงการแข่งขัน',[{id:'league',name:'ลีก'},{id:'group',name:'แบ่งกลุ่ม'},{id:'knockout',name:'น็อกเอาต์'}],r.stage||(db.competitions.find(c=>c.id===cid)?.format==='knockout'?'knockout':'league'))+
+      input('group_name','กลุ่ม (สำหรับรอบแบ่งกลุ่ม)',r.group_name||'')+
       select(
         "status",
         "สถานะ",
@@ -480,9 +488,11 @@ function edit(tableName, id) {
         }
       }
       if (tableName === "players") data.active = f.has("active");
-      if (tableName === "competitions")
+      if (tableName === "competitions") {
+        data=competitions.payload(data,r);
         for (const key of ["win_points", "draw_points", "loss_points"])
           data[key] = Number(data[key]);
+      }
       if (tableName === "matches") {
         if (data.home_id === data.away_id)
           throw Error("ทีมเหย้าและเยือนต้องต่างกัน");
@@ -550,50 +560,6 @@ function entryEditor(id) {
           );
         if (error) throw error;
       }
-    },
-  );
-}
-function schedule() {
-  if (!competition) throw Error("เลือกรายการแข่งขันก่อนสร้างโปรแกรม");
-  const entries = db.entries.filter((e) => e.competition_id === competition);
-  if (entries.length < 2) throw Error("ลงทะเบียนอย่างน้อย 2 ทีมก่อน");
-  if (db.matches.some((m) => m.competition_id === competition))
-    throw Error("รายการนี้มีโปรแกรมแล้ว ใช้เพิ่มแมตช์เพื่อป้องกันโปรแกรมซ้ำ");
-  modal(
-    "สร้างโปรแกรมพบกันหมด",
-    input(
-      "start",
-      "วันเวลาเริ่ม (ประเทศไทย)",
-      "",
-      "datetime-local",
-      "required",
-    ) +
-      input("gap", "ห่างกันกี่วันต่อรอบ", 7, "number", 'min="1" required') +
-      input("venue", "สนามเริ่มต้น") +
-      '<label><input type="checkbox" name="double"> เหย้า–เยือน (สองเลก)</label><p class="form-help">นัดในรอบเดียวกันเริ่มเวลาเดียวกัน สามารถแก้เวลาแต่ละคู่ภายหลังได้</p>',
-    async (f) => {
-      const cid = competition;
-      const { data: existing, error: check } = await client
-        .from("fm_matches")
-        .select("id")
-        .eq("competition_id", cid)
-        .limit(1);
-      if (check) throw check;
-      if (existing.length)
-        throw Error("มีโปรแกรมจากอีกเครื่องแล้ว กรุณารีเฟรช");
-      const start = new Date(f.get("start") + ":00+07:00").getTime(),
-        gap = Number(f.get("gap")) * 86400000;
-      const rows = roundRobin(
-        entries.map((e) => e.team_id),
-        f.has("double"),
-      ).map((m) => ({
-        ...m,
-        competition_id: cid,
-        kickoff: new Date(start + (m.round - 1) * gap).toISOString(),
-        venue: f.get("venue"),
-      }));
-      const { error } = await client.from("fm_matches").insert(rows);
-      if (error) throw error;
     },
   );
 }
@@ -833,7 +799,15 @@ document.addEventListener("click", (e) => {
       return;
     }
     if (a === "schedule") {
-      schedule();
+      competitions.schedule(competition);
+      return;
+    }
+    if(a==='copy-season'){competitions.copy(id);return;}
+    if(a==='advance-teams'){competitions.advance(id);return;}
+    if(a==='child-competition'){
+      edit('competitions','');
+      $('#modal-form [name="parent_id"]').value=id;
+      $('#f-season').value=db.competitions.find(c=>c.id===id)?.season||'';
       return;
     }
     if (a === "lineup") {
@@ -971,6 +945,7 @@ async function start() {
     notify("โหลดฐานข้อมูลไม่สำเร็จ: " + message(e), true);
   }
 }
+const competitions=competitionTools({getDB:()=>db,client,modal,input,select,escape,button});
 start();
 
 function paintMatchClocks(){document.querySelectorAll("[data-match-clock]").forEach(node=>{const m=db.matches.find(m=>m.id===node.dataset.matchClock);if(!m)return;const text=clockText(m.obs_result?.clock,m.obs_synced_at);node.textContent=text.time+" | "+text.label;});}

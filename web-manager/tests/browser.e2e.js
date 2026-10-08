@@ -16,6 +16,7 @@ await db.exec(
 );
 await db.exec(fs.readFileSync('supabase/migrations/003_broadcast_results.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/004_public_competitions.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/005_competition_structure.sql','utf8'));
 await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
 const seeded = await db.query(
   "insert into fm_teams(name) values('Bangkok FC'),('South United') returning *",
@@ -91,14 +92,14 @@ const server = http.createServer(async (req, res) => {
       let rows;
       if (route.includes("/rpc/")) {
         const name = path.basename(route);
-        assert.ok(["fm_save_lineup", "fm_import_team"].includes(name));
+        assert.ok(["fm_save_lineup", "fm_import_team", "fm_copy_season", "fm_save_schedule", "fm_advance_teams"].includes(name));
         const names = Object.keys(body);
         const args = names.map((name, i) => `${name} := $${i + 1}`).join(",");
         rows = (
           await db.query(
             `select public.${name}(${args})`,
             Object.values(body).map((v) =>
-              typeof v === "object" ? JSON.stringify(v) : v,
+              typeof v === "object" && !(name==='fm_advance_teams'&&Array.isArray(v)) ? JSON.stringify(v) : v,
             ),
           )
         ).rows;
@@ -304,6 +305,48 @@ try {
     ),
   );
   await page.screenshot({ path: "artifacts/teams-mobile.png", fullPage: true });
+  await page.locator('[data-action="nav"][data-id="competitions"]').click();
+  await page.locator('[data-action="edit-competitions"][data-id=""]').click();
+  await page.locator('#f-name').fill('IFC LEAGUE');
+  await page.locator('#f-season').fill('2569');
+  await page.locator('#f-recurrence').selectOption('recurring');
+  await page.locator('#f-format').selectOption('groups');
+  await page.locator('#modal button[type="submit"]').click();
+  await page.locator('#modal').waitFor({state:'hidden'});
+  const mainCard=page.locator('article').filter({has:page.getByRole('heading',{name:'IFC LEAGUE',exact:true})});
+  await mainCard.locator('[data-action="child-competition"]').click();
+  await page.locator('#f-name').fill('Province A');
+  await page.locator('#f-format').selectOption('knockout');
+  await page.locator('#modal button[type="submit"]').click();
+  await page.locator('#modal').waitFor({state:'hidden'});
+  await page.getByRole('heading',{name:'Province A',exact:true}).waitFor();
+  await mainCard.locator('[data-action="copy-season"]').click();
+  await page.locator('#f-season').fill('2570');
+  await page.locator('#modal button[type="submit"]').click();
+  await page.locator('#modal').waitFor({state:'hidden'});
+  await page.waitForFunction(()=>document.querySelectorAll('[data-action="copy-season"]').length===3);
+  assert.equal((await db.query("select * from fm_competitions where name='Province A' and season='2570'")).rows.length,1);
+  await page.screenshot({path:'artifacts/competitions-mobile.png',fullPage:true});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  const province=(await db.query("select * from fm_competitions where name='Province A' and season='2569'")).rows[0];
+  await db.query('insert into fm_entries(competition_id,team_id) select $1,id from fm_teams',[province.id]);
+  await page.locator('[data-action="refresh"]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-action="refresh"]').disabled);
+  await page.locator('[data-action="nav"][data-id="matches"]').click();
+  await page.locator('#competition-filter').selectOption(province.id);
+  await page.locator('[data-action="schedule"]').click();
+  assert.equal(await page.locator('#schedule-preview p').count(),2);
+  await page.locator('#f-start').fill('2026-11-01T18:00');
+  await page.locator('#modal button[type="submit"]').click();
+  await page.locator('#modal').waitFor({state:'hidden'});
+  await db.query("update fm_matches set status='finished',obs_home_score=2,obs_away_score=1 where competition_id=$1",[province.id]);
+  await page.locator('[data-action="refresh"]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-action="refresh"]').disabled);
+  await page.locator('[data-action="schedule"]').click();
+  await page.locator('#f-start').fill('2026-11-08T18:00');
+  await page.locator('#modal button[type="submit"]').click();
+  await page.locator('#modal').waitFor({state:'hidden'});
+  assert.equal((await db.query('select * from fm_matches where competition_id=$1',[province.id])).rows.length,2);
   assert.deepEqual(errors, []);
   console.log(
     "PASS: login, cloud CRUD, lineup, goal + assist, stats, final result standings, responsive mobile, zero browser errors",
