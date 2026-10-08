@@ -1,4 +1,5 @@
 import "./style.css";
+import { broadcastEventsHTML, emptyEventsHTML } from './broadcast-events.js';
 import { clockText } from './match-clock.js';
 import { recoveryRequested, recoveryForm, requestRecovery } from "./recovery.js";
 import {
@@ -177,6 +178,7 @@ function matchRows(list) {
           `<span class="score">${s.home} : ${s.away}</span>`,
           badge(m.status),
           button("เปิดแมตช์", "match", m.id) +
+            button("บันทึกผล", "result", m.id) +
             button("แก้ไข", "edit-matches", m.id),
         ];
       }),
@@ -212,7 +214,7 @@ function content() {
       ]),
     )}</div>`;
   if (view === "competitions")
-    return `<div class="toolbar"><p class="muted">สร้างรายการ แล้วลงทะเบียนทีมก่อนจัดโปรแกรม</p>${button("+ เพิ่มรายการ", "edit-competitions", "", "primary")}</div><div class="cards">${db.competitions.map((c) => `<article class="team-card"><h2>${escape(c.name)}</h2><p class="muted">${escape(c.season)} · ${db.entries.filter((e) => e.competition_id === c.id).length} ทีม</p><div class="actions">${button("แก้ไข", "edit-competitions", c.id)}${button("ทีมที่เข้าร่วม", "entries", c.id)}</div></article>`).join("")}</div>`;
+    return `<div class="toolbar"><p class="muted">สร้างรายการ แล้วลงทะเบียนทีมก่อนจัดโปรแกรม</p>${button("+ เพิ่มรายการ", "edit-competitions", "", "primary")}</div><div class="cards">${db.competitions.map((c) => `<article class="team-card"><h2>${escape(c.name)}</h2><p class="muted">${escape(c.season)} · ${db.entries.filter((e) => e.competition_id === c.id).length} ทีม</p><div class="actions">${button("แก้ไข", "edit-competitions", c.id)}${button("ทีมที่เข้าร่วม", "entries", c.id)}${button(c.is_public ? "ปิดสาธารณะ" : "เปิดสาธารณะ", "publish", c.id)}<a href="./public.html?competition=${escape(c.id)}" target="_blank" rel="noopener">Public</a></div></article>`).join("")}</div>`;
   if (view === "matches")
     return `<div class="panel"><div class="toolbar">${chooseCompetition()}<div class="actions">${button("สร้างโปรแกรมพบกันหมด", "schedule")}${button("+ เพิ่มแมตช์", "edit-matches", "", "primary")}</div></div>${matchRows(db.matches.filter((m) => !competition || m.competition_id === competition))}</div>`;
   if (view === "standings") {
@@ -287,15 +289,15 @@ function content() {
   return "";
 }
 function matchContent() {
-  const broadcastLabel = 'ผลจาก Control / OBS';
-  const broadcastNote = 'สกอร์นี้มาจากการถ่ายทอดสด สถิตินักเตะยังอ้างอิงเหตุการณ์ที่บันทึกบนเว็บ';
+  const broadcastLabel = match()?.obs_result?.source==='manual' ? 'ผลที่บันทึกบนเว็บ' : 'ผลจาก Control / OBS';
+  const broadcastNote = 'สกอร์รวมและสถิตินักเตะแยกกัน สถิตินักเตะอ้างอิงเหตุการณ์ที่บันทึกบนเว็บ';
   const m = match();
   if (!m) return '<div class="empty">ไม่พบแมตช์</div>';
   const s = score(m, db.events);
   const events = db.events
     .filter((e) => e.match_id === m.id)
     .sort((a, b) => a.minute - b.minute || a.added - b.added);
-  return `${m.obs_synced_at ? `<p class="form-help">${escape(broadcastLabel)} ? ${date(m.obs_synced_at)}<br>${escape(broadcastNote)}</p>` : ""}<div class="toolbar">${button("← โปรแกรมการแข่งขัน", "nav", "matches")}<div class="actions">${badge(m.status)}${button("แก้ไขเวลา / สถานะ", "edit-matches", m.id)}${button("ดาวน์โหลดแมตช์ OBS", "obs", m.id)}</div></div><div class="match-head"><div>${crest(m.home_id)}${escape(team(m.home_id)?.name)}</div><div><span class="score">${s.home} : ${s.away}</span><div class="match-clock" data-match-clock="${escape(m.id)}"></div><div>${date(m.kickoff)}</div><small>${escape(m.venue)}</small></div><div>${crest(m.away_id)}${escape(team(m.away_id)?.name)}</div></div><div class="tabs">${button("เหตุการณ์ / ผลการแข่งขัน", "tab", "events", tab === "events" ? "active" : "")}${button("ตัวจริง / ตัวสำรอง", "tab", "lineups", tab === "lineups" ? "active" : "")}</div>${
+  return `${m.obs_synced_at ? `<p class="form-help">${escape(broadcastLabel)} / ${date(m.obs_synced_at)}<br>${escape(broadcastNote)}</p>` : ""}<div class="toolbar">${button("← โปรแกรมการแข่งขัน", "nav", "matches")}<div class="actions">${badge(m.status)}${button("แก้ไขเวลา / สถานะ", "edit-matches", m.id)}${button("ดาวน์โหลดแมตช์ OBS", "obs", m.id)}${button("บันทึกผล", "result", m.id)}</div></div><div class="match-head"><div>${crest(m.home_id)}${escape(team(m.home_id)?.name)}</div><div><span class="score">${s.home} : ${s.away}</span><div class="match-clock" data-match-clock="${escape(m.id)}"></div><div>${date(m.kickoff)}</div><small>${escape(m.venue)}</small></div><div>${crest(m.away_id)}${escape(team(m.away_id)?.name)}</div></div><div class="tabs">${button("เหตุการณ์ / ผลการแข่งขัน", "tab", "events", tab === "events" ? "active" : "")}${button("ตัวจริง / ตัวสำรอง", "tab", "lineups", tab === "lineups" ? "active" : "")}</div>${
     tab === "lineups"
       ? `<div class="two">${[m.home_id, m.away_id]
           .map(
@@ -312,7 +314,7 @@ function matchContent() {
               )}</div>`,
           )
           .join("")}</div>`
-      : `<div class="panel"><div class="toolbar"><h2>เหตุการณ์ในแมตช์</h2>${button("+ บันทึกประตู / ใบ", "event", "", "primary")}</div><p class="form-help">ประตูจะเพิ่มสกอร์อัตโนมัติ เลือกผู้จ่ายเพื่อบันทึกแอสซิสต์ · หากยังไม่ระบุผู้ยิง สามารถเลือก “ไม่ระบุ” ได้</p>${events.map((e) => `<div class="event-row"><time>${e.minute}${e.added ? "+" + e.added : ""}′</time><div class="desc"><strong>${kindLabels[e.kind]}</strong> · ${escape(player(e.player_id)?.name || team(e.team_id)?.name)}<div class="muted">${escape(team(e.team_id)?.name)}${e.assist_id ? " · แอสซิสต์: " + escape(player(e.assist_id)?.name) : ""}</div></div>${button("แก้ไข", "event", e.id)}${button("ลบ", "delete-event", e.id, "danger")}</div>`).join("") || '<div class="empty">ยังไม่มีเหตุการณ์ — สกอร์ 0 : 0</div>'}</div>`
+      : `<div class="panel"><div class="toolbar"><h2>เหตุการณ์ในแมตช์</h2>${button("+ บันทึกประตู / ใบ", "event", "", "primary")}</div><p class="form-help">ประตูจะเพิ่มสกอร์อัตโนมัติ เลือกผู้จ่ายเพื่อบันทึกแอสซิสต์ · หากยังไม่ระบุผู้ยิง สามารถเลือก “ไม่ระบุ” ได้</p>${broadcastEventsHTML(m, db.teams)}${events.map((e) => `<div class="event-row"><time>${e.minute}${e.added ? "+" + e.added : ""}′</time><div class="desc"><strong>${kindLabels[e.kind]}</strong> · ${escape(player(e.player_id)?.name || team(e.team_id)?.name)}<div class="muted">${escape(team(e.team_id)?.name)}${e.assist_id ? " · แอสซิสต์: " + escape(player(e.assist_id)?.name) : ""}</div></div>${button("แก้ไข", "event", e.id)}${button("ลบ", "delete-event", e.id, "danger")}</div>`).join("") || (broadcastEventsHTML(m, db.teams) ? "" : emptyEventsHTML(s, m.obs_result?.source === "manual" ? "manual" : !!m.obs_synced_at))}</div>`
   }`;
 }
 function modal(title, body, onSave) {
@@ -333,6 +335,37 @@ const input = (name, label, value = "", type = "text", extra = "") =>
   `<label for="f-${name}">${label}</label><input id="f-${name}" name="${name}" type="${type}" value="${escape(value)}" ${extra}>`;
 const select = (name, label, rows, value = "", blank = "เลือก…") =>
   `<label for="f-${name}">${label}</label><select id="f-${name}" name="${name}" required>${options(rows, value, blank)}</select>`;
+async function publicLogo(blob) {
+  const image=await createImageBitmap(blob);
+  try {const canvas=document.createElement('canvas');const scale=Math.min(1,256/Math.max(image.width,image.height));canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/webp',0.85);}finally{image.close();}
+}
+function resultEditor(id) {
+  const m=db.matches.find(m=>m.id===id);if(!m)return;
+  const s=score(m,db.events);
+  modal('บันทึกผลการแข่งขันบนเว็บ',
+    `<p>${escape(team(m.home_id)?.name)} — ${escape(team(m.away_id)?.name)}</p><p class="form-help">ใช้กับคู่ที่ไม่ได้ถ่ายทอดสด สกอร์รวมไม่สร้างสถิติผู้ยิงหรือแอสซิสต์ให้เอง ให้บันทึกเหตุการณ์เพิ่มเติมหากต้องการสถิตินักเตะ</p>`+
+    select('mode','วิธีระบุสกอร์',[{id:'manual',name:'กรอกสกอร์รวม'},{id:'events',name:'คำนวณจากเหตุการณ์ที่บันทึกบนเว็บ'}],'manual')+
+    input('home','สกอร์ทีมเหย้า',s.home,'number','min="0" max="999" step="1" required')+
+    input('away','สกอร์ทีมเยือน',s.away,'number','min="0" max="999" step="1" required')+
+    select('status','สถานะ',Object.entries(statusLabels).map(([id,name])=>({id,name})),m.status==='scheduled'?'finished':m.status),async f=>{
+      const home=Number(f.get('home')),away=Number(f.get('away'));
+      if(!Number.isInteger(home)||!Number.isInteger(away)||home<0||away<0||home>999||away>999)throw Error('กรุณากรอกสกอร์เป็นจำนวนเต็ม 0–999');
+      const manual=f.get('mode')==='manual';
+      await save('matches',{status:f.get('status'),obs_home_score:manual?home:null,obs_away_score:manual?away:null,obs_result:manual?{source:'manual'}:null,obs_synced_at:manual?new Date().toISOString():null},m);
+    });
+}
+async function publishCompetition(id) {
+  const c=db.competitions.find(c=>c.id===id);if(!c)return;
+  const enabled=!c.is_public;
+  if(!confirm(enabled?'เปิดเผยชื่อทีม โลโก้ นักเตะ โปรแกรม ผล และสถิติของรายการนี้ให้ทุกคนดูโดยไม่ต้องเข้าสู่ระบบ?':'ปิดการแสดงรายการนี้ในหน้าสาธารณะ?'))return;
+  const logos={};
+  if(enabled)for(const t of db.teams.filter(t=>db.entries.some(e=>e.competition_id===id&&e.team_id===t.id))){
+    logos[t.id]='';if(t.logo_path){const {data,error}=await client.storage.from('fm-logos').download(t.logo_path);if(error)throw error;logos[t.id]=await publicLogo(data);}
+  }
+  const {error}=await client.rpc('fm_set_public_competition',{p_id:id,p_public:enabled,p_logos:logos});
+  if(error){if(error.code==='PGRST202')throw Error('กรุณารัน SQL 004_public_competitions.sql ก่อนเปิดหน้าสาธารณะ');throw error;}
+  await refresh();notify(enabled?'เปิดเผยรายการนี้แล้ว':'ปิดหน้าสาธารณะของรายการนี้แล้ว');
+}
 function edit(tableName, id) {
   const old = db[tableName].find((r) => r.id === id),
     r = old || {};
@@ -441,6 +474,10 @@ function edit(tableName, id) {
           logo_path: f.has("clear_logo") ? "" : r.logo_path || "",
         };
         if (file?.size) data.logo_path = await uploadLogo(file, user.id);
+        if(Object.hasOwn(r,'public_logo')) {
+          if(f.has('clear_logo'))data.public_logo='';
+          if(file?.size)data.public_logo=await publicLogo(file);
+        }
       }
       if (tableName === "players") data.active = f.has("active");
       if (tableName === "competitions")
@@ -807,7 +844,9 @@ document.addEventListener("click", (e) => {
       eventEditor(id);
       return;
     }
+    if(a==='result'){resultEditor(id);return;}
     perform(async () => {
+      if(a==='publish')await publishCompetition(id);
       if (a === "refresh") await refresh();
       if (a === "logout") {
         await client.auth.signOut();
