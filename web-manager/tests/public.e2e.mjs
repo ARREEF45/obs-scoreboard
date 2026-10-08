@@ -14,6 +14,10 @@ try{
    await route.fulfill({contentType:'application/json',body:JSON.stringify(payload)});
  });
  await page.goto('http://127.0.0.1:4179/public.html');await page.getByRole('heading',{name:'Test Cup',exact:true}).waitFor();assert.equal(await page.locator('input[type=password]').count(),0);assert.match(await page.locator('#public-content').textContent(),/3 : 2/);
+ await page.locator('[data-fixture-filter=status]').selectOption('scheduled');assert.equal(await page.locator('[data-match]').count(),0);
+ await page.locator('[data-reset-fixtures]').click();assert.equal(await page.locator('[data-match]').count(),1);
+ fs.mkdirSync('artifacts',{recursive:true});await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'artifacts/fixtures-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:'artifacts/fixtures-mobile.png',fullPage:true});
  await page.locator('[data-tab=standings]').click();assert.match(await page.locator('tbody').textContent(),/Home Team/);
  await page.locator('[data-tab=teams]').click();assert.match(await page.locator('#public-content').textContent(),/Striker/);
  await page.locator('[data-tab=stats]').click();assert.equal(await page.locator('tbody tr td').nth(2).textContent(),'1');
