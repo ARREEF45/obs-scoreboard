@@ -804,6 +804,7 @@ document.addEventListener("click", (e) => {
     }
     if(a==='copy-season'){competitions.copy(id);return;}
     if(a==='advance-teams'){competitions.advance(id);return;}
+    if(a==='delete-competition'){perform(()=>competitions.deleteCompetition(id));return;}
     if(a==='child-competition'){
       edit('competitions','');
       $('#modal-form [name="parent_id"]').value=id;
