@@ -57,9 +57,9 @@ export function competitionTools({
       input(
         "group_count",
         "จำนวนกลุ่ม (สำหรับแบ่งกลุ่ม)",
-        r.group_count || 2,
+        r.group_count ?? 1,
         "number",
-        'min="2" max="64" required',
+        'min="1" max="64" step="1" required',
       ) +
       input("starts_on", "วันเริ่ม", r.starts_on || "", "date") +
       input("ends_on", "วันสิ้นสุด", r.ends_on || "", "date") +
