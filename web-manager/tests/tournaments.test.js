@@ -68,6 +68,13 @@ test("group fixtures and standings isolate groups and exclude knockout matches",
     initialSchedule(c, ["a", "b", "c"], false, { a: "1", b: "1", c: "2" }),
   );
 });
+test('single group generates all fixtures and one standings table',()=>{
+ const c={id:'one',format:'groups',group_count:1,win_points:3,draw_points:1,loss_points:0};
+ const ids=['a','b','c'];const p=initialSchedule(c,ids,false,Object.fromEntries(ids.map(id=>[id,'1'])));
+ assert.equal(p.rows.length,3);assert.ok(p.rows.every(m=>m.group_name==='1'));
+ const tables=groupTables(c,ids.map(id=>({id,name:id})),p.rows.map(m=>({...m,competition_id:c.id,status:'scheduled'})),[]);
+ assert.equal(tables.length,1);assert.equal(tables[0].rows.length,3);
+});
 test("competition hierarchy, season cloning, qualifiers, atomic scheduling and public metadata", async () => {
   const db = new PGlite();
   try {
@@ -79,6 +86,7 @@ test("competition hierarchy, season cloning, qualifiers, atomic scheduling and p
       "003_broadcast_results.sql",
       "004_public_competitions.sql",
       "005_competition_structure.sql",
+      "006_single_group.sql",
     ])
       await db.exec(
         fs.readFileSync(
@@ -96,6 +104,9 @@ test("competition hierarchy, season cloning, qualifiers, atomic scheduling and p
         "insert into fm_competitions(name,season,series_key) values('IFC','2569',gen_random_uuid()) returning *",
       )
     ).rows[0];
+    assert.equal(root.group_count,1);
+    await assert.rejects(db.query('update fm_competitions set group_count=0 where id=$1',[root.id]),/check constraint/);
+    await db.query('update fm_competitions set group_count=1,format=\'groups\' where id=$1',[root.id]);
     const province = (
       await db.query(
         "insert into fm_competitions(name,season,parent_id,advance_count) values('Province','2569',$1,2) returning *",
