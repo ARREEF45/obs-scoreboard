@@ -17,6 +17,8 @@ await db.exec(
 await db.exec(fs.readFileSync('supabase/migrations/003_broadcast_results.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/004_public_competitions.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/005_competition_structure.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/006_single_group.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/007_delete_competition.sql','utf8'));
 await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
 const seeded = await db.query(
   "insert into fm_teams(name) values('Bangkok FC'),('South United') returning *",
@@ -92,7 +94,7 @@ const server = http.createServer(async (req, res) => {
       let rows;
       if (route.includes("/rpc/")) {
         const name = path.basename(route);
-        assert.ok(["fm_save_lineup", "fm_import_team", "fm_copy_season", "fm_save_schedule", "fm_advance_teams"].includes(name));
+        assert.ok(["fm_save_lineup", "fm_import_team", "fm_copy_season", "fm_save_schedule", "fm_advance_teams", "fm_competition_delete_preview", "fm_delete_competition"].includes(name));
         const names = Object.keys(body);
         const args = names.map((name, i) => `${name} := $${i + 1}`).join(",");
         rows = (
@@ -103,6 +105,7 @@ const server = http.createServer(async (req, res) => {
             ),
           )
         ).rows;
+        if(name==='fm_competition_delete_preview')rows=rows[0][name];
       } else {
         const table = path.basename(route);
         assert.match(
@@ -347,6 +350,20 @@ try {
   await page.locator('#modal button[type="submit"]').click();
   await page.locator('#modal').waitFor({state:'hidden'});
   assert.equal((await db.query('select * from fm_matches where competition_id=$1',[province.id])).rows.length,2);
+  await page.locator('[data-action="nav"][data-id="competitions"]').click();
+  const deleting=page.locator('article').filter({has:page.getByRole('heading',{name:'IFC LEAGUE',exact:true})}).filter({hasText:'2569'});
+  await deleting.locator('[data-action="delete-competition"]').click();
+  await page.locator('#f-confirm_name').waitFor();
+  await page.locator('#modal [data-action="close"]').click();
+  assert.equal((await db.query('select * from fm_matches where competition_id=$1',[province.id])).rows.length,2);
+  await deleting.locator('[data-action="delete-competition"]').click();
+  await page.locator('#f-confirm_name').fill('IFC LEAGUE');
+  await page.locator('#modal button[type="submit"]').click();
+  await page.locator('#modal').waitFor({state:'hidden'});
+  await page.waitForFunction(()=>document.querySelectorAll('[data-action="copy-season"]').length===2);
+  assert.equal((await db.query('select * from fm_matches where competition_id=$1',[province.id])).rows.length,0);
+  assert.equal((await db.query("select * from fm_competitions where name='Province A' and season='2570'")).rows.length,1);
+  assert.equal((await db.query('select * from fm_teams')).rows.length,3);
   assert.deepEqual(errors, []);
   console.log(
     "PASS: login, cloud CRUD, lineup, goal + assist, stats, final result standings, responsive mobile, zero browser errors",

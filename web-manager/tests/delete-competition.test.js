@@ -1,0 +1,41 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+test('delete competition atomically removes descendants and match data, preserves library and other seasons, rejects stale/unauthorised requests',async()=>{
+ const db=new PGlite();try{
+ await db.exec(`create role authenticated;create role anon;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
+ for(const file of ['001_football_manager.sql','003_broadcast_results.sql','004_public_competitions.sql','005_competition_structure.sql','006_single_group.sql','007_delete_competition.sql'])await db.exec(fs.readFileSync(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+ const owner='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000-000000000002';
+ await db.exec(`insert into auth.users values('${owner}'),('${other}');set role authenticated;set request.jwt.claim.sub='${owner}'`);
+ const root=(await db.query("insert into fm_competitions(name,season,is_public) values('IFC','2569',true) returning *")).rows[0];
+ const child=(await db.query("insert into fm_competitions(name,season,parent_id,is_public) values('Province','2569',$1,true) returning *",[root.id])).rows[0];
+ const next=(await db.query("insert into fm_competitions(name,season) values('IFC','2570') returning *")).rows[0];
+ const incoming=(await db.query("insert into fm_competitions(name,season,advance_to) values('Other province','2569',$1) returning *",[child.id])).rows[0];
+ const teams=(await db.query("insert into fm_teams(name) values('A'),('B') returning *")).rows;
+ const player=(await db.query("insert into fm_players(name,team_id) values('Player',$1) returning *",[teams[0].id])).rows[0];
+ for(const c of [child,next])for(const t of teams)await db.query('insert into fm_entries(competition_id,team_id) values($1,$2)',[c.id,t.id]);
+ const match=(await db.query('insert into fm_matches(competition_id,home_id,away_id) values($1,$2,$3) returning *',[child.id,teams[0].id,teams[1].id])).rows[0];
+ await db.query("insert into fm_lineups(match_id,team_id,player_id,role) values($1,$2,$3,'starter')",[match.id,teams[0].id,player.id]);
+ await db.query("insert into fm_events(match_id,team_id,player_id,kind) values($1,$2,$3,'goal')",[match.id,teams[0].id,player.id]);
+ const preview=async()=> (await db.query('select fm_competition_delete_preview($1) as p',[root.id])).rows[0].p;
+ const old=await preview();assert.equal(old.competitions.length,2);assert.equal(old.events.length,1);assert.equal(old.incoming.length,1);
+ await db.exec(`set request.jwt.claim.sub='${other}'`);
+ await assert.rejects(db.query('select fm_delete_competition($1,$2)',[root.id,JSON.stringify(old)]),/not found/);
+ await db.exec('set role anon');
+ await assert.rejects(db.query('select fm_competition_delete_preview($1)',[root.id]),/permission/);
+ await assert.rejects(db.query('select fm_delete_competition($1,$2)',[root.id,JSON.stringify(old)]),/permission/);
+ await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
+ await db.query("update fm_matches set status='live' where id=$1",[match.id]);
+ await assert.rejects(db.query('select fm_delete_competition($1,$2)',[root.id,JSON.stringify(old)]),/DELETE_CONFLICT/);
+ assert.equal((await db.query('select * from fm_events')).rows.length,1);
+ await db.query('select fm_delete_competition($1,$2)',[root.id,JSON.stringify(await preview())]);
+ for(const table of ['matches','lineups','events'])assert.equal((await db.query('select * from fm_'+table)).rows.length,0);
+ assert.equal((await db.query('select * from fm_teams')).rows.length,2);
+ assert.equal((await db.query('select * from fm_players')).rows.length,1);
+ assert.equal((await db.query('select * from fm_entries')).rows.length,2);
+ assert.equal((await db.query('select * from fm_competitions')).rows.length,2);
+ assert.equal((await db.query('select advance_to from fm_competitions where id=$1',[incoming.id])).rows[0].advance_to,null);
+ await db.exec('set role anon');assert.equal((await db.query('select fm_public_competition($1) as p',[child.id])).rows[0].p,null);
+ }finally{await db.close();}
+});

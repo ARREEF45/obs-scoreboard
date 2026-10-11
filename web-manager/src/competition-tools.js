@@ -18,6 +18,7 @@ export function competitionTools({
   const rpc = async (name, args) => {
     const { data, error } = await client.rpc(name, args);
     if (error) {
+      if(error.code==='PGRST202'&&['fm_competition_delete_preview','fm_delete_competition'].includes(name))throw Error('กรุณาติดตั้ง SQL 007_delete_competition.sql ก่อนใช้ปุ่มลบรายการ');
       if (error.code === "PGRST202")
         throw Error(
           "กรุณาติดตั้ง SQL 005_competition_structure.sql ก่อนใช้โครงสร้างการแข่งขัน",
@@ -105,7 +106,7 @@ export function competitionTools({
     const db = getDB(),
       parent = db.competitions.find((x) => x.id === c.parent_id),
       destination = db.competitions.find((x) => x.id === c.advance_to);
-    return `<p>${escape(formats[c.format] || formats.league)} · ${c.series_key ? "ต่อเนื่องหลายฤดูกาล" : c.parent_id ? "รอบย่อย" : "รายการครั้งเดียว"}</p>${parent ? `<p>ภายใต้ ${escape(label(parent))}</p>` : ""}${destination ? `<p>ผ่าน ${c.advance_count} ทีม → ${escape(label(destination))}</p>` : ""}<div class="actions">${button("เพิ่มรอบ / จังหวัด", "child-competition", c.id)}${!c.parent_id ? button("สร้างฤดูกาลใหม่", "copy-season", c.id) : ""}${destination ? button("ยืนยันทีมผ่านเข้ารอบ", "advance-teams", c.id) : ""}</div>`;
+    return `<p>${escape(formats[c.format] || formats.league)} · ${c.series_key ? "ต่อเนื่องหลายฤดูกาล" : c.parent_id ? "รอบย่อย" : "รายการครั้งเดียว"}</p>${parent ? `<p>ภายใต้ ${escape(label(parent))}</p>` : ""}${destination ? `<p>ผ่าน ${c.advance_count} ทีม → ${escape(label(destination))}</p>` : ""}<div class="actions">${button("เพิ่มรอบ / จังหวัด", "child-competition", c.id)}${!c.parent_id ? button("สร้างฤดูกาลใหม่", "copy-season", c.id) : ""}${button("ลบรายการ", "delete-competition", c.id, "danger")}${destination ? button("ยืนยันทีมผ่านเข้ารอบ", "advance-teams", c.id) : ""}</div>`;
   }
   function copy(id) {
     const c = getDB().competitions.find((c) => c.id === id);
@@ -120,6 +121,20 @@ export function competitionTools({
           p_copy_teams: f.has("teams"),
         }),
     );
+  }
+  async function deleteCompetition(id) {
+    const snapshot=await rpc('fm_competition_delete_preview',{p_id:id});
+    const c=snapshot.competitions.find(c=>c.id===id);
+    modal('ลบรายการแข่งขัน · '+label(c),
+      `<p>จะลบข้อมูลต่อไปนี้ถาวร:</p><ul><li>รายการและรอบย่อย ${snapshot.competitions.length} รายการ</li><li>โปรแกรม / ผลการแข่งขัน ${snapshot.matches.length} นัด</li><li>การลงทะเบียนทีม ${snapshot.entries.length} รายการ</li><li>รายชื่อผู้เล่นในแมตช์ ${snapshot.lineups.length} รายการ</li><li>เหตุการณ์ประตู / ใบ ${snapshot.events.length} รายการ</li></ul><p>${snapshot.competitions.map(x=>escape(label(x))).join('<br>')}</p><p>ทีมและนักเตะในคลังกลาง รวมถึงฤดูกาลอื่นจะยังอยู่</p>${snapshot.incoming.length?`<p>ยกเลิกปลายทางเข้ารอบของ: ${snapshot.incoming.map(x=>escape(label(x))).join(', ')} โดยไม่ลบรายการเหล่านี้</p>`:''}`+
+      input('confirm_name','พิมพ์ชื่อรายการเพื่อยืนยัน: '+escape(c.name),'','text','required'),
+      async f=>{
+        if(f.get('confirm_name')!==c.name)throw Error('ชื่อรายการไม่ตรง กรุณาพิมพ์ชื่อให้ตรงก่อนลบ');
+        try{await rpc('fm_delete_competition',{p_id:id,p_expected:snapshot});}
+        catch(e){if(e.message?.includes('DELETE_CONFLICT'))throw Error('ข้อมูลเปลี่ยนแปลงหลังเปิดหน้าลบ กรุณาปิดแล้วเปิดหน้าลบอีกครั้งเพื่อตรวจข้อมูลล่าสุด');throw e;}
+      });
+    const submit=document.querySelector('#modal button[type="submit"]');
+    submit.textContent='ยืนยันลบถาวร';submit.classList.add('danger');
   }
   function advance(id) {
     const db = getDB(),
@@ -318,5 +333,5 @@ export function competitionTools({
     form.addEventListener("change", show);
     show();
   }
-  return { fields, payload, extra, copy, advance, schedule };
+  return { fields, payload, extra, copy, advance, schedule, deleteCompetition };
 }
