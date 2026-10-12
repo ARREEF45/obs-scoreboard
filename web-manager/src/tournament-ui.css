@@ -1,0 +1,40 @@
+.ui-icon{width:20px;height:20px;flex:none;vertical-align:middle}
+button:has(.ui-icon){display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.shell .brand,.auth .brand{display:flex;gap:12px;align-items:flex-start;font-size:18px;line-height:1.6;padding:0 4px 24px}
+.shell .brand>.ui-icon,.auth .brand>.ui-icon{width:30px;height:30px;color:#7de1b8;margin-top:4px}
+.shell .brand small{font-size:9px;letter-spacing:1px;margin-top:8px}
+.auth .brand{color:#14233b}
+.shell nav button{justify-content:flex-start}
+.icon-button{width:42px;height:42px;display:inline-flex;justify-content:center;align-items:center;padding:0!important;border-radius:10px;background:#f0f4f8;color:#435874;text-decoration:none;flex:none}
+.icon-button:hover{background:#e2ebe9;color:#12644c}
+button:focus-visible,a:focus-visible{outline:3px solid #22a27d;outline-offset:3px}
+.competition-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:12px 0 24px}
+.competition-toolbar h2{font-size:23px;margin:3px 0 8px}
+.competition-toolbar p{margin-bottom:0}
+.eyebrow{font-size:11px;letter-spacing:2px;color:#167657;font-weight:700}
+.competition-list{display:grid;gap:14px}
+.competition-row{display:grid;grid-template-columns:76px minmax(160px,1fr) auto minmax(150px,210px);gap:22px;align-items:center;padding:24px;background:#fff;border:1px solid #dde5ee;border-radius:16px;box-shadow:0 4px 18px #14233b04}
+.competition-row.is-child{margin-left:calc(var(--depth)*20px);border-left:3px solid #c4ddcf}
+.competition-logo{display:block;width:76px;height:76px;object-fit:contain;background:#f6f8fb;border:1px solid #e5ebf2;border-radius:15px;padding:8px}
+.logo-placeholder{display:grid;place-items:center;color:#8193ab}
+.logo-placeholder .ui-icon{width:34px;height:34px}
+.competition-info{min-width:0;overflow-wrap:anywhere}
+.competition-info h2{font-size:20px;margin:9px 0 5px;line-height:1.45}
+.competition-tags{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.visibility{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#75839a}
+.visibility .ui-icon{width:14px;height:14px}
+.visibility.is-public{color:#167657}
+.competition-description,.competition-parent{font-size:12px;color:#6b7d93;margin:5px 0 0}
+.competition-parent .ui-icon{width:14px;height:14px;margin-right:6px}
+.competition-numbers{display:flex;gap:22px;padding:8px 22px;border-left:1px solid #edf1f6;border-right:1px solid #edf1f6;text-align:center}
+.competition-numbers strong{display:block;font-size:23px;color:#263e59}
+.competition-numbers span{font-size:11px;color:#76869a}
+.competition-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.logo-editor{display:flex;gap:18px;align-items:center;margin:16px 0;padding:16px;background:#f6f8fb;border-radius:12px}
+.logo-editor>div:last-child{flex:1;min-width:0}
+.public-heading{display:flex;align-items:center;gap:20px;min-width:0}
+.public-heading>div{min-width:0}
+.public-heading .competition-logo{width:88px;height:88px;background:#fff}
+.empty>.ui-icon{width:42px;height:42px;margin-bottom:18px;color:#8da0b6}
+@media(max-width:1200px){.competition-row{grid-template-columns:64px minmax(150px,1fr) auto;gap:16px}.competition-logo{width:64px;height:64px}.competition-actions{grid-column:2/-1;justify-content:flex-start}.competition-numbers{border-right:0;padding:4px 0 4px 16px;gap:16px}}
+@media(max-width:650px){.competition-toolbar{align-items:flex-start;flex-wrap:wrap}.competition-toolbar h2{font-size:20px}.competition-row{padding:16px;grid-template-columns:56px minmax(0,1fr);gap:14px}.competition-logo{width:56px;height:56px}.competition-row.is-child{margin-left:calc(var(--depth)*6px)}.competition-info h2{font-size:18px}.competition-numbers{grid-column:1/-1;border:0;border-top:1px solid #edf1f6;padding:12px 0 0;justify-content:space-around}.competition-actions{grid-column:1/-1;gap:7px}.competition-actions .icon-button{width:40px;height:40px}.shell .brand{font-size:17px;padding-bottom:14px}.shell .brand small{margin-top:2px}.public-heading{gap:12px}.public-heading .competition-logo{width:56px;height:56px}.logo-editor{align-items:flex-start;padding:10px;gap:10px}}

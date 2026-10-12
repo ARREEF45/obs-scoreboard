@@ -1,4 +1,6 @@
 import "./style.css";
+import {appName,actionButton,icon,competitionCrest} from './ui.js';
+import {competitionList} from './competition-list.js';
 import {competitionTools} from './competition-tools.js';
 import {competitionLabel,competitionTree,stageLabel} from './tournaments.js';
 import {groupStandingsHTML} from './group-standings.js';
@@ -68,8 +70,7 @@ const team = (id) => db.teams.find((t) => t.id === id),
   player = (id) => db.players.find((p) => p.id === id),
   match = () => db.matches.find((m) => m.id === matchId),
   comp = () => db.competitions.find((c) => c.id === competition);
-const button = (text, action, id = "", cls = "") =>
-  `<button class="${cls}" data-action="${action}" data-id="${escape(id)}">${text}</button>`;
+const button = actionButton;
 const badge = (s) =>
   `<span class="badge ${s === "live" ? "live" : ""}">${statusLabels[s] || escape(s)}</span>`;
 const date = (s) =>
@@ -95,6 +96,7 @@ function notify(text, error = false) {
   );
 }
 function message(error) {
+  if(error.code==='PGRST204'&&error.message?.includes('logo_data'))return 'กรุณาติดตั้ง SQL 008_competition_logos.sql เพื่อบันทึกโลโก้รายการ';
   if(error.code==='PGRST204'||error.code==='PGRST202')return 'ฐานข้อมูลยังไม่รองรับส่วนนี้ กรุณาติดตั้ง SQL 005_competition_structure.sql หลังไฟล์ 004 แล้วรีเฟรช';
   if (error.code === "23503")
     return "ข้อมูลนี้เชื่อมกับนักเตะ รายชื่อ หรือเหตุการณ์ในแมตช์แล้ว กรุณาตรวจรายการที่เกี่ยวข้อง";
@@ -157,7 +159,7 @@ function render() {
   if (!user) return;
   const title = view === "match" ? "จัดการแมตช์" : labels[view];
   $("#app").innerHTML =
-    `<div class="shell"><aside><div class="brand">สนาม<span style="color:#58dca2">.</span><small>FOOTBALL MANAGER</small></div><nav>${Object.entries(
+    `<div class="shell"><aside><div class="brand">${icon("trophy")}<span>${appName}<small>FOOTBALL TOURNAMENT MANAGER</small></span></div><nav>${Object.entries(
       labels,
     )
       .map(([key, label]) =>
@@ -216,8 +218,7 @@ function content() {
         button("แก้ไข", "edit-players", p.id),
       ]),
     )}</div>`;
-  if (view === "competitions")
-    return `<div class="toolbar"><p class="muted">สร้างรายการ แล้วลงทะเบียนทีมก่อนจัดโปรแกรม</p>${button("+ เพิ่มรายการ", "edit-competitions", "", "primary")}</div><div class="cards">${competitionTree(db.competitions).map((c) => `<article class="team-card"><h2>${escape(c.name)}</h2>${competitions.extra(c)}<p class="muted">${escape(c.season)} · ${db.entries.filter((e) => e.competition_id === c.id).length} ทีม</p><div class="actions">${button("แก้ไข", "edit-competitions", c.id)}${button("ทีมที่เข้าร่วม", "entries", c.id)}${button(c.is_public ? "ปิดสาธารณะ" : "เปิดสาธารณะ", "publish", c.id)}<a href="./public.html?competition=${escape(c.id)}" target="_blank" rel="noopener">Public</a></div></article>`).join("")}</div>`;
+  if (view === "competitions") return competitionList(db,button);
   if (view === "matches")
     return `<div class="panel"><div class="toolbar">${chooseCompetition()}<div class="actions">${button("สร้างโปรแกรม / รอบถัดไป", "schedule")}${button("+ เพิ่มแมตช์", "edit-matches", "", "primary")}</div></div>${matchRows(db.matches.filter((m) => !competition || m.competition_id === competition))}</div>`;
   if (view === "standings") {
@@ -344,6 +345,12 @@ async function publicLogo(blob) {
   const image=await createImageBitmap(blob);
   try {const canvas=document.createElement('canvas');const scale=Math.min(1,256/Math.max(image.width,image.height));canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/webp',0.85);}finally{image.close();}
 }
+async function competitionLogo(file){
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>5242880)throw Error('โลโก้ต้องเป็น PNG/JPG/WebP ไม่เกิน 5 MB');
+  const encoded=await publicLogo(file);
+  if(encoded.length>200000)throw Error('รูปโลโก้มีขนาดใหญ่เกินไป กรุณาใช้รูปที่เล็กลง');
+  return encoded;
+}
 function resultEditor(id) {
   const m=db.matches.find(m=>m.id===id);if(!m)return;
   const s=score(m,db.events);
@@ -407,6 +414,7 @@ function edit(tableName, id) {
     fields =
       input("name", "ชื่อรายการ", r.name, "text", "required") +
       input("season", "ฤดูกาล / ปี / ครั้งที่จัด", r.season) +
+      `<div class="logo-editor"><div id="competition-logo-preview">${competitionCrest(r)}</div><div>${input('competition_logo','โลโก้รายการ (PNG/JPG/WebP ไม่เกิน 5 MB)','','file','accept="image/png,image/jpeg,image/webp"')}<label><input name="clear_competition_logo" type="checkbox"> ลบโลโก้เดิม</label></div></div>`+
       competitions.fields(r) +
       input(
         "win_points",
@@ -489,6 +497,10 @@ function edit(tableName, id) {
       }
       if (tableName === "players") data.active = f.has("active");
       if (tableName === "competitions") {
+        const file=f.get('competition_logo');
+        delete data.competition_logo;delete data.clear_competition_logo;
+        data.logo_data=f.has('clear_competition_logo')?'':r.logo_data||'';
+        if(file?.size)data.logo_data=await competitionLogo(file);
         data=competitions.payload(data,r);
         for (const key of ["win_points", "draw_points", "loss_points"])
           data[key] = Number(data[key]);
@@ -504,6 +516,12 @@ function edit(tableName, id) {
       await save(tableName, data, old);
     },
   );
+  if(tableName==='competitions'){
+    $('#f-competition_logo').onchange=async e=>{
+      const file=e.target.files[0];if(!file){$('#competition-logo-preview').innerHTML=competitionCrest(r);return;}
+      try{const logo_data=await competitionLogo(file);$('#competition-logo-preview').innerHTML=competitionCrest({...r,logo_data});}catch(error){notify(error.message,true);e.target.value='';$('#competition-logo-preview').innerHTML=competitionCrest(r);}
+    };
+  }
   if (tableName === "matches")
     $("#f-competition_id").onchange = (e) => {
       const eligible = db.teams.filter((t) =>
@@ -864,7 +882,7 @@ document.addEventListener("change", (e) => {
 function login() {
   const setup = !client;
   $("#app").innerHTML =
-    `<div class="auth panel"><div class="brand">สนาม<span style="color:#199369">.</span></div><h2>${setup ? "เชื่อมต่อฐานข้อมูล" : "เข้าสู่ระบบจัดการแข่งขัน"}</h2><p>${setup ? "ใส่ Project URL และ Publishable key จาก Supabase หลังติดตั้งตารางตามคู่มือ" : "ใช้บัญชีเดียวกันบนคอมและมือถือเพื่อจัดการข้อมูลชุดเดียวกัน"}</p><form id="auth-form">${setup ? input("url", "Supabase Project URL", "", "url", "required") + input("key", "Publishable key", "", "text", "required") : input("email", "อีเมล", "", "email", 'required autocomplete="username"') + input("password", "รหัสผ่าน", "", "password", 'required autocomplete="current-password"')}<button type="submit" class="primary">${setup ? "บันทึกการเชื่อมต่อ" : "เข้าสู่ระบบ"}</button><p class="auth-error" id="auth-error"></p></form><small>${setup ? "ห้ามใช้ service-role หรือ secret key ในหน้าเว็บ" : "บัญชีผู้ใช้สร้างผ่าน Supabase Authentication โดยผู้ดูแล"}</small></div>`;
+    `<div class="auth panel"><div class="brand">${icon("trophy")}<span>${appName}</span></div><h2>${setup ? "เชื่อมต่อฐานข้อมูล" : "เข้าสู่ระบบจัดการแข่งขัน"}</h2><p>${setup ? "ใส่ Project URL และ Publishable key จาก Supabase หลังติดตั้งตารางตามคู่มือ" : "ใช้บัญชีเดียวกันบนคอมและมือถือเพื่อจัดการข้อมูลชุดเดียวกัน"}</p><form id="auth-form">${setup ? input("url", "Supabase Project URL", "", "url", "required") + input("key", "Publishable key", "", "text", "required") : input("email", "อีเมล", "", "email", 'required autocomplete="username"') + input("password", "รหัสผ่าน", "", "password", 'required autocomplete="current-password"')}<button type="submit" class="primary">${setup ? "บันทึกการเชื่อมต่อ" : "เข้าสู่ระบบ"}</button><p class="auth-error" id="auth-error"></p></form><small>${setup ? "ห้ามใช้ service-role หรือ secret key ในหน้าเว็บ" : "บัญชีผู้ใช้สร้างผ่าน Supabase Authentication โดยผู้ดูแล"}</small></div>`;
   if (!setup) {
     const reset = document.createElement("button");
     reset.type = "button";
