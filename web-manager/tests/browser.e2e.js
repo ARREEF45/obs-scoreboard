@@ -359,9 +359,16 @@ try {
   await page.locator('[data-action="schedule"]').click();
   assert.equal(await page.locator('#schedule-preview p').count(),2);
   await page.locator('#f-start').fill('2026-11-01T18:00');
+  await page.locator('#f-field_count').fill('2');
+  await page.locator('#f-venue_0').fill('Main pitch');
+  await page.locator('#f-venue_1').fill('Second pitch');
+  await page.locator('#f-match_minutes').fill('90');
+  await page.locator('#f-break_minutes').fill('15');
+  assert.match(await page.locator('#schedule-preview').textContent(),/Main pitch/);
   await page.locator('#modal button[type="submit"]').click();
   await page.locator('#modal').waitFor({state:'hidden'});
   await db.query("update fm_matches set status='finished',obs_home_score=2,obs_away_score=1 where competition_id=$1",[province.id]);
+  assert.equal((await db.query('select venue from fm_matches where competition_id=$1',[province.id])).rows[0].venue,'Main pitch');
   await page.locator('[data-action="refresh"]').click();
   await page.waitForFunction(()=>!document.querySelector('[data-action="refresh"]').disabled);
   await page.locator('[data-action="schedule"]').click();

@@ -6,6 +6,7 @@ import {
   groupTables,
 } from "./tournaments.js";
 import { score } from "./domain.js";
+import {allocateSlots} from './schedule-slots.js';
 export function competitionTools({
   getDB,
   client,
@@ -282,23 +283,19 @@ export function competitionTools({
           "datetime-local",
           "required",
         ) +
-        input("gap", "จำนวนวันระหว่างรอบ", 7, "number", 'min="1" required') +
-        input("venue", "สนาม") +
+        input('teams_per_day','จำนวนทีมสูงสุดที่แข่งต่อวัน',Math.min(ids.length,8),'number','min="2" max="256" step="1" required')+
+        input('field_count','จำนวนสนาม',1,'number','min="1" max="32" step="1" required')+
+        '<div id="schedule-venues"></div>'+
+        input('match_minutes','เวลาต่อคู่ รวมพักครึ่ง (นาที)',120,'number','min="1" max="720" step="1" required')+
+        input('break_minutes','เว้นระหว่างคู่ในสนามเดียวกัน (นาที)',15,'number','min="0" max="240" step="1" required')+
+        input("gap", "ระยะห่างจากวันสุดท้ายของรอบก่อนถึงรอบถัดไป (วัน)", 7, "number", 'min="1" max="365" step="1" required') +
         (!state.phase && c.format !== "knockout"
           ? '<label><input name="double" type="checkbox"> พบกันเหย้า–เยือน</label>'
           : "") +
-        '<p>ลำดับแรกได้รับสิทธิ์ผ่านรอบแรกเมื่อจำนวนทีมไม่ลงตัว นัดในรอบเดียวกันเริ่มเวลาเดียวกัน แก้เวลาแต่ละคู่ได้หลังสร้าง</p><div id="schedule-preview" aria-live="polite"></div>',
+        '<p>หนึ่งคู่ใช้ 2 ทีม แต่ละทีมแข่งไม่เกินวันละ 1 นัด เช่น 8 ทีม = ไม่เกิน 4 คู่ต่อวัน สนามต่างกันเริ่มพร้อมกันได้ สนามเดียวกันเรียงเวลาและเวลาพัก คู่ที่เกินจำนวนหรือแข่งไม่ทันก่อนเที่ยงคืนเลื่อนไปวันถัดไป โดยเริ่มเวลาเดิม</p><div id="schedule-preview" aria-live="polite"></div>',
       async (f) => {
         const plan = planFrom(f);
-        const start = new Date(f.get("start") + ":00+07:00").getTime(),
-          first = Math.min(...plan.rows.map((m) => m.round));
-        const rows = plan.rows.map((m) => ({
-          ...m,
-          kickoff: new Date(
-            start + (m.round - first) * Number(f.get("gap")) * 86400000,
-          ).toISOString(),
-          venue: f.get("venue"),
-        }));
+        const rows = timedRows(plan,f).map(({courtOrder,...m})=>m);
         await rpc("fm_save_schedule", {
           p_id: id,
           p_version: c.version,
@@ -307,17 +304,23 @@ export function competitionTools({
         });
       },
     );
+    function timedRows(plan,f){
+      const count=Number(f.get('field_count'));
+      if(!Number.isInteger(count)||count<1||count>32)throw Error('จำนวนสนามต้องเป็น 1–32 สนาม');
+      return allocateSlots(plan.rows,{start:f.get('start'),teamsPerDay:Number(f.get('teams_per_day')),venues:Array.from({length:count},(_,i)=>f.get('venue_'+i)||''),minutes:Number(f.get('match_minutes')),breakMinutes:Number(f.get('break_minutes')),gapDays:Number(f.get('gap'))});
+    }
     const form = document.querySelector("#modal-form"),
       preview = document.querySelector("#schedule-preview");
     const show = () => {
       try {
-        const plan = planFrom(new FormData(form));
+        const f=new FormData(form),plan = planFrom(f);
+        const rows=f.get('start')?timedRows(plan,f):plan.rows;
         preview.innerHTML =
           "<h3>ตรวจคู่แข่งขันก่อนบันทึก</h3>" +
-          plan.rows
+          rows
             .map(
               (m) =>
-                `<p>รอบ ${m.round}${m.group_name ? " · กลุ่ม " + escape(m.group_name) : ""}: ${escape(name(m.home_id))} — ${escape(name(m.away_id))}</p>`,
+                `<p>${m.kickoff?`<strong>${new Date(m.kickoff).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})} · ${escape(m.venue)} · คู่ที่ ${m.courtOrder}</strong><br>`:''}รอบ ${m.round}${m.group_name ? " · กลุ่ม " + escape(m.group_name) : ""}: ${escape(name(m.home_id))} — ${escape(name(m.away_id))}</p>`,
             )
             .join("") +
           (plan.state.byes.length
@@ -331,6 +334,9 @@ export function competitionTools({
     };
     form.addEventListener("input", show);
     form.addEventListener("change", show);
+    const fieldCount=document.querySelector('#f-field_count'),venueBox=document.querySelector('#schedule-venues');
+    const renderVenues=()=>{const n=Number(fieldCount.value);if(!Number.isInteger(n)||n<1||n>32)return;const previous=new FormData(form);venueBox.innerHTML=Array.from({length:n},(_,i)=>input('venue_'+i,'ชื่อสนาม '+(i+1),previous.get('venue_'+i)||'สนาม '+(i+1),'text','required maxlength="120"')).join('');show();};
+    fieldCount.addEventListener('input',renderVenues);renderVenues();
     show();
   }
   return { fields, payload, extra, copy, advance, schedule, deleteCompetition };
