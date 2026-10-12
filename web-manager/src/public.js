@@ -1,5 +1,6 @@
 import './style.css';
 import './public.css';
+import {icon,competitionCrest} from './ui.js';
 import {groupStandingsHTML} from './group-standings.js';
 import {competitionTree} from './tournaments.js';
 import { createClient } from '@supabase/supabase-js';
@@ -17,6 +18,7 @@ const team=id=>data.teams.find(t=>t.id===id),player=id=>data.players.find(p=>p.i
 const crest=t=>/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(t?.public_logo||'')?`<img class="crest" alt="" src="${t.public_logo}">`:'<span class="crest">⚽</span>';
 function table(headers,rows){return `<div class="table-wrap"><table><thead><tr>${headers.map(t=>`<th>${t}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(t=>`<td>${t}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;}
 function render(){
+ document.querySelector('#public-competition-logo').innerHTML=data?competitionCrest(data.competition):'';
  if(!data){root.innerHTML='<div class="empty">ยังไม่มีรายการแข่งขันที่เปิดเผยต่อสาธารณะ</div>';return;}
  document.querySelector('#public-title').textContent=data.competition.name;
  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('primary',b.dataset.tab===tab));
@@ -45,6 +47,9 @@ async function load(reset=false){
 async function list(){const {data:rows,error}=await client.rpc('fm_public_competitions');if(error)throw error;select.replaceChildren(...competitionTree(rows).map(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=(c.depth?"↳ ":"")+c.name+(c.season?' · '+c.season:'');return o;}));const requested=new URLSearchParams(location.search).get('competition');if(rows.some(c=>c.id===requested))select.value=requested;await load(true);}
 select.onchange=()=>{fixtureFilters={round:'',team:'',status:''};selectedMatch='';tab='matches';const url=new URL(location.href);url.searchParams.set('competition',select.value);history.replaceState(null,'',url);load(true);};
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-reset-fixtures')){fixtureFilters={round:'',team:'',status:''};render();return;}if(b.dataset.tab){tab=b.dataset.tab;render();}if(b.dataset.match){selectedMatch=b.dataset.match;tab='detail';render();}if(b.id==='public-refresh')list().catch(()=>notice.textContent='โหลดข้อมูลไม่สำเร็จ');});
+document.querySelector('#public-refresh').innerHTML=icon('refresh')+'<span>รีเฟรช</span>';
+const tabIcons={matches:'calendar',standings:'table',teams:'teams',stats:'chart'};
+document.querySelectorAll('.public-tabs button').forEach(b=>{b.insertAdjacentHTML('afterbegin',icon(tabIcons[b.dataset.tab]));});
 list().catch(()=>{notice.textContent='ยังเปิดข้อมูลสาธารณะไม่ได้ ผู้ดูแลต้องติดตั้ง SQL และเปิดเผยรายการแข่งขัน';render();});
 setInterval(()=>{if(!document.hidden&&!loading){loading=true;load().finally(()=>loading=false);}},10000);setInterval(paintClocks,1000);
 

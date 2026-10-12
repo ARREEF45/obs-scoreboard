@@ -87,6 +87,8 @@ test("competition hierarchy, season cloning, qualifiers, atomic scheduling and p
       "004_public_competitions.sql",
       "005_competition_structure.sql",
       "006_single_group.sql",
+      "007_delete_competition.sql",
+      "008_competition_logos.sql",
     ])
       await db.exec(
         fs.readFileSync(
@@ -105,6 +107,8 @@ test("competition hierarchy, season cloning, qualifiers, atomic scheduling and p
       )
     ).rows[0];
     assert.equal(root.group_count,1);
+    await db.query("update fm_competitions set logo_data='data:image/png;base64,YQ==' where id=$1",[root.id]);
+    await assert.rejects(db.query("update fm_competitions set logo_data='javascript:alert(1)' where id=$1",[root.id]),/check constraint/);
     await assert.rejects(db.query('update fm_competitions set group_count=0 where id=$1',[root.id]),/check constraint/);
     await db.query('update fm_competitions set group_count=1,format=\'groups\' where id=$1',[root.id]);
     const province = (
@@ -201,6 +205,12 @@ test("competition hierarchy, season cloning, qualifiers, atomic scheduling and p
     const copied = (
       await db.query("select fm_copy_season($1,'2570',true) as id", [root.id])
     ).rows[0].id;
+    assert.equal((await db.query('select logo_data from fm_competitions where id=$1',[copied])).rows[0].logo_data,'data:image/png;base64,YQ==');
+    await db.query("select fm_set_public_competition($1,true,'{}')",[root.id]);
+    await db.exec('set role anon');
+    assert.equal((await db.query('select fm_public_competition($1) as p',[root.id])).rows[0].p.competition.logo_data,'data:image/png;base64,YQ==');
+    assert.equal((await db.query('select fm_public_competition($1) as p',[copied])).rows[0].p,null);
+    await db.exec('set role authenticated');
     const children = (
       await db.query("select * from fm_competitions where parent_id=$1", [
         copied,

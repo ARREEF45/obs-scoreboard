@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap");
+@import './tournament-ui.css';
 :root {
   font-family: "Noto Sans Thai", Tahoma, Arial, sans-serif;
   color: #14233b;

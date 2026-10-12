@@ -19,6 +19,7 @@ await db.exec(fs.readFileSync('supabase/migrations/004_public_competitions.sql',
 await db.exec(fs.readFileSync('supabase/migrations/005_competition_structure.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/006_single_group.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/007_delete_competition.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/008_competition_logos.sql','utf8'));
 await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
 const seeded = await db.query(
   "insert into fm_teams(name) values('Bangkok FC'),('South United') returning *",
@@ -311,12 +312,16 @@ try {
   await page.locator('[data-action="nav"][data-id="competitions"]').click();
   await page.locator('[data-action="edit-competitions"][data-id=""]').click();
   await page.locator('#f-name').fill('IFC LEAGUE');
+  const logo=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=64;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#167657';ctx.fillRect(0,0,64,64);ctx.fillStyle='white';ctx.font='bold 20px sans-serif';ctx.fillText('IFC',12,40);return c.toDataURL('image/png').split(',')[1];});
+  await page.locator('#f-competition_logo').setInputFiles({name:'ifc.png',mimeType:'image/png',buffer:Buffer.from(logo,'base64')});
+  await page.locator('#competition-logo-preview img').waitFor();
   await page.locator('#f-season').fill('2569');
   await page.locator('#f-recurrence').selectOption('recurring');
   await page.locator('#f-format').selectOption('groups');
   await page.locator('#modal button[type="submit"]').click();
   await page.locator('#modal').waitFor({state:'hidden'});
   const mainCard=page.locator('article').filter({has:page.getByRole('heading',{name:'IFC LEAGUE',exact:true})});
+  await mainCard.locator('img.competition-logo').waitFor();
   await mainCard.locator('[data-action="child-competition"]').click();
   await page.locator('#f-name').fill('Province A');
   await page.locator('#f-format').selectOption('knockout');
@@ -329,8 +334,13 @@ try {
   await page.locator('#modal').waitFor({state:'hidden'});
   await page.waitForFunction(()=>document.querySelectorAll('[data-action="copy-season"]').length===3);
   assert.equal((await db.query("select * from fm_competitions where name='Province A' and season='2570'")).rows.length,1);
+  assert.match((await db.query("select logo_data from fm_competitions where name='IFC LEAGUE' and season='2570'")).rows[0].logo_data,/^data:image\/webp;base64,/);
   await page.screenshot({path:'artifacts/competitions-mobile.png',fullPage:true});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.setViewportSize({width:1440,height:1000});
+  await page.screenshot({path:'artifacts/competitions-desktop.png',fullPage:true});
+  const row=await page.locator('.competition-row').first().boundingBox();assert.ok(row.width>row.height*3);
+  await page.setViewportSize({width:390,height:844});
   const province=(await db.query("select * from fm_competitions where name='Province A' and season='2569'")).rows[0];
   await db.query('insert into fm_entries(competition_id,team_id) select $1,id from fm_teams',[province.id]);
   await page.locator('[data-action="refresh"]').click();
