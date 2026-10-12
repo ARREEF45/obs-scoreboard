@@ -1,3 +1,4 @@
+import {teamDirectory,teamResults} from './team-directory.js';
 import "./style.css";
 import {appName,actionButton,icon,competitionCrest} from './ui.js';
 import {competitionList} from './competition-list.js';
@@ -55,6 +56,7 @@ let db = {
   lastSync = "",
   timer,
   noticeTimer;
+const teamFilters={query:"",status:""};
 const logos = new Map(),
   labels = {
     dashboard: "ภาพรวม",
@@ -118,6 +120,7 @@ async function perform(work) {
   }
 }
 async function refresh(quiet = false) {
+  if(quiet&&document.activeElement?.id==='team-search')return;
   if (!client || !user) return;
   try {
     const next = await fetchAll();
@@ -204,8 +207,7 @@ function content() {
       .join(
         "",
       )}</div><div class="panel"><div class="toolbar"><h2>การแข่งขันที่กำลังจะมาถึง</h2>${button("จัดโปรแกรม", "nav", "matches", "primary")}</div>${matchRows(db.matches.filter((m) => ["scheduled", "live", "postponed"].includes(m.status)).slice(0, 10))}</div>`;
-  if (view === "teams")
-    return `<div class="toolbar"><p class="muted">${db.teams.length} ทีม · เก็บชื่อ โลโก้ และสีชุดไว้ใช้ทุกนัด</p>${button("+ เพิ่มทีม", "edit-teams", "", "primary")}</div><div class="cards">${db.teams.map((t) => `<article class="team-card"><div class="team-head">${crest(t.id)}<div><h3>${escape(t.name)}</h3><small>${t.archived ? "เก็บถาวร" : db.players.filter((p) => p.team_id === t.id && p.active).length + " นักเตะ"}</small></div></div><p class="muted">ผู้คุมทีม ${escape(t.coach) || "—"}</p><p><i class="swatch" style="background:${t.home_color}"></i>เหย้า <i class="swatch" style="background:${t.away_color}"></i>เยือน</p>${button("แก้ไขข้อมูลทีม", "edit-teams", t.id)}</article>`).join("") || '<div class="empty">เริ่มต้นด้วยการเพิ่มทีมแรก</div>'}</div>`;
+  if (view === "teams") return teamDirectory(db,crest,button,teamFilters);
   if (view === "players")
     return `<div class="panel"><div class="toolbar"><h2>รายชื่อนักเตะทั้งหมด</h2>${button("+ เพิ่มนักเตะ", "edit-players", "", "primary")}</div>${table(
       ["เบอร์", "ชื่อ", "ทีม", "ตำแหน่ง", "สถานะ", ""],
@@ -969,3 +971,6 @@ start();
 
 function paintMatchClocks(){document.querySelectorAll("[data-match-clock]").forEach(node=>{const m=db.matches.find(m=>m.id===node.dataset.matchClock);if(!m)return;const text=clockText(m.obs_result?.clock,m.obs_synced_at);node.textContent=text.time+" | "+text.label;});}
 setInterval(paintMatchClocks,1000);
+
+document.addEventListener('input',e=>{if(e.target.id==='team-search'){teamFilters.query=e.target.value;document.querySelector('#team-results').innerHTML=teamResults(db,crest,button,teamFilters);}});
+document.addEventListener('change',e=>{if(e.target.id==='team-status'){teamFilters.status=e.target.value;document.querySelector('#team-results').innerHTML=teamResults(db,crest,button,teamFilters);}});

@@ -1,0 +1,13 @@
+import {escapeHTML as esc,icon} from './ui.js';
+const colour=v=>/^#[0-9a-f]{6}$/i.test(v||'')?v:'#64748b';
+export function teamResults(db,crest,button,filters){
+ const query=filters.query.trim().toLocaleLowerCase('th');
+ const teams=db.teams.filter(t=>(!filters.status||(filters.status==='archived')===t.archived)&&(!query||`${t.name} ${t.coach||''}`.toLocaleLowerCase('th').includes(query))).sort((a,b)=>Number(a.archived)-Number(b.archived)||a.name.localeCompare(b.name,'th'));
+ return `<p class="team-result-count">แสดง ${teams.length} จาก ${db.teams.length} ทีม</p><div class="team-directory-grid">${teams.map(t=>{
+ const players=db.players.filter(p=>p.team_id===t.id),active=players.filter(p=>p.active).length;
+ return `<article class="directory-team ${t.archived?'is-archived':''}"><div class="directory-team-top"><span class="team-state ${t.archived?'':'is-active'}">${t.archived?'เก็บถาวร':'ใช้งาน'}</span>${button('แก้ไขข้อมูลทีม','edit-teams',t.id)}</div><div class="directory-team-identity">${crest(t.id)}<div><h2>${esc(t.name)}</h2><p>${icon('players')}<span>${esc(t.coach)||'ยังไม่ระบุผู้คุมทีม'}</span></p></div></div><div class="directory-team-stats"><div><strong>${active}</strong><span>นักเตะใช้งาน</span></div><div><strong>${players.length}</strong><span>นักเตะทั้งหมด</span></div></div><div class="directory-kits"><div><span class="kit-sample" style="--kit:${colour(t.home_color)}"></span><span><small>ชุดเหย้า</small><b>${esc(colour(t.home_color).toUpperCase())}</b></span></div><div><span class="kit-sample" style="--kit:${colour(t.away_color)}"></span><span><small>ชุดเยือน</small><b>${esc(colour(t.away_color).toUpperCase())}</b></span></div></div></article>`;
+ }).join('')||'<div class="panel empty"><h2>ไม่พบทีม</h2><p>ลองเปลี่ยนคำค้นหาหรือสถานะ หรือเพิ่มทีมใหม่</p></div>'}</div>`;
+}
+export function teamDirectory(db,crest,button,filters){
+ return `<section class="team-directory"><div class="competition-toolbar"><div><p class="eyebrow">TEAM DIRECTORY</p><h2>คลังทีมฟุตบอล</h2><p class="muted">${db.teams.filter(t=>!t.archived).length} ทีมใช้งาน · ${db.teams.filter(t=>t.archived).length} ทีมเก็บถาวร</p></div>${button('+ เพิ่มทีม','edit-teams','','primary')}</div><div class="team-directory-filters"><label for="team-search">ค้นหาทีมหรือผู้คุมทีม<input id="team-search" type="search" placeholder="พิมพ์ชื่อทีม หรือชื่อผู้คุมทีม" value="${esc(filters.query)}"></label><label for="team-status">สถานะ<select id="team-status">${[['','ทุกทีม'],['active','ใช้งาน'],['archived','เก็บถาวร']].map(([v,n])=>`<option value="${v}" ${filters.status===v?'selected':''}>${n}</option>`).join('')}</select></label></div><div id="team-results">${teamResults(db,crest,button,filters)}</div></section>`;
+}

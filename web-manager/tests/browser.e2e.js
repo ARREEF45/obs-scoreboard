@@ -309,6 +309,15 @@ try {
     ),
   );
   await page.screenshot({ path: "artifacts/teams-mobile.png", fullPage: true });
+  await page.locator('#team-search').fill('South');
+  assert.equal(await page.locator('.directory-team').count(),1);
+  await page.locator('#team-search').fill('');
+  await page.locator('#team-status').selectOption('archived');
+  assert.equal(await page.locator('.directory-team').count(),0);
+  await page.locator('#team-status').selectOption('');
+  await page.setViewportSize({width:1440,height:1000});
+  await page.screenshot({path:'artifacts/teams-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
   await page.locator('[data-action="nav"][data-id="competitions"]').click();
   await page.locator('[data-action="edit-competitions"][data-id=""]').click();
   await page.locator('#f-name').fill('IFC LEAGUE');
