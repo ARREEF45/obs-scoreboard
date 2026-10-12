@@ -1,3 +1,4 @@
+import {qualificationTable} from './qualification-table.js';
 import {teamDirectory,teamResults} from './team-directory.js';
 import "./style.css";
 import {appName,actionButton,icon,competitionCrest} from './ui.js';
@@ -241,32 +242,7 @@ function content() {
       : [];
     return `<div class="panel"><div class="toolbar">${chooseCompetition()}<small>เฉพาะนัดจบแล้ว · คะแนน → ผลต่าง → ประตูได้ → ชื่อทีม</small></div>${
       c
-        ? table(
-            [
-              "#",
-              "ทีม",
-              "แข่ง",
-              "ชนะ",
-              "เสมอ",
-              "แพ้",
-              "ได้",
-              "เสีย",
-              "+/−",
-              "คะแนน",
-            ],
-            rows.map((r, i) => [
-              i + 1,
-              escape(r.name),
-              r.played,
-              r.won,
-              r.drawn,
-              r.lost,
-              r.gf,
-              r.ga,
-              r.gf - r.ga,
-              `<strong>${r.points}</strong>`,
-            ]),
-          )
+        ? qualificationTable(rows,c)
         : '<div class="empty">เลือกรายการแข่งขันเพื่อดูตารางคะแนน</div>'
     }</div>`;
   }

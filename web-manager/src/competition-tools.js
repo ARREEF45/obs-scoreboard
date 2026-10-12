@@ -79,11 +79,16 @@ export function competitionTools({
         "number",
         'min="1" max="128" required',
       ) +
+      input('qualifying_places','จำนวนอันดับเข้ารอบในตาราง (ต่อกลุ่ม / 0 = ไม่แสดง)',r.tournament_state?.qualifying_places??(r.advance_to&&r.format!=='groups'?r.advance_count:0),'number','min="0" max="128" step="1" required')+
       `<label for="qualification-rules">กติกา / เงื่อนไขผ่านเข้ารอบ</label><textarea id="qualification-rules" name="qualification_rules" maxlength="5000" rows="4">${escape(r.qualification_rules||'')}</textarea><p class="form-help">ระบุเงื่อนไข เช่น อันดับ 1–2 ผ่าน หากคะแนนเท่ากันใช้เฮดทูเฮด ผู้จัดตรวจและยืนยันตามกติกานี้ ข้อความจะเผยแพร่เมื่อเปิดรายการสาธารณะ</p>`+
       '<p class="form-help">ตัวอย่าง: IFC LEAGUE 2569 → รอบจังหวัดสงขลา / รอบจังหวัดปัตตานี / Champions League แล้วกำหนดให้แต่ละจังหวัดส่งทีมไป Champions League การผ่านเข้ารอบต้องให้ผู้จัดยืนยันก่อน</p></fieldset>'
     );
   }
   function payload(data, r) {
+    const places=Number(data.qualifying_places);
+    if(!Number.isInteger(places)||places<0||places>128)throw Error('จำนวนอันดับเข้ารอบต้องเป็น 0–128');
+    data.tournament_state={...r.tournament_state,qualifying_places:places};
+    delete data.qualifying_places;
     const parent = getDB().competitions.find((c) => c.id === data.parent_id);
     data.series_key =
       data.recurrence === "recurring" && !parent
@@ -300,7 +305,7 @@ export function competitionTools({
           p_id: id,
           p_version: c.version,
           p_rows: rows,
-          p_state: plan.state,
+          p_state: {...state,...plan.state,...(state.phase==='group'?{group_qualifiers:f.getAll('qualified')}:{})},
         });
       },
     );

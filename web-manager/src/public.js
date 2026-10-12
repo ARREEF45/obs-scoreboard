@@ -1,3 +1,4 @@
+import {qualificationTable} from './qualification-table.js';
 import './style.css';
 import './public.css';
 import {icon,competitionCrest} from './ui.js';
@@ -23,7 +24,7 @@ function render(){
  document.querySelector('#public-title').textContent=data.competition.name;
  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('primary',b.dataset.tab===tab));
  if(tab==='matches')root.innerHTML=fixturesHTML(data,fixtureFilters);
- if(tab==='standings')root.innerHTML=`<div class="panel"><h2>ตารางคะแนน</h2><p>คำนวณจากนัดที่จบการแข่งขันแล้ว</p>${table(['#','ทีม','แข่ง','ชนะ','เสมอ','แพ้','ได้','เสีย','ผลต่าง','คะแนน'],standings(data.competition,data.teams,data.matches,data.events).map((r,i)=>[i+1,escape(r.name),r.played,r.won,r.drawn,r.lost,r.gf,r.ga,r.gf-r.ga,r.points]))}</div>`;
+ if(tab==='standings')root.innerHTML=`<div class="panel"><h2>ตารางคะแนน</h2><p>คำนวณจากนัดที่จบการแข่งขันแล้ว</p>${qualificationTable(standings(data.competition,data.teams,data.matches,data.events),data.competition)}</div>`;
  if(tab==='teams')root.innerHTML=`<div class="cards">${data.teams.map(t=>`<article class="panel"><div class="team-head">${crest(t)}<h2>${escape(t.name)}</h2></div><p>ผู้คุมทีม ${escape(t.coach)||'—'}</p><p>ชุดเหย้า ${escape(t.home_color)} · ชุดเยือน ${escape(t.away_color)}</p>${table(['เบอร์','นักเตะ','ตำแหน่ง'],data.players.filter(p=>p.team_id===t.id&&p.active).map(p=>[escape(p.number),escape(p.name),escape(p.position)]))}</article>`).join('')}</div>`;
  if(tab==='stats')root.innerHTML=`<div class="panel"><h2>สถิตินักเตะ</h2><p>คำนวณจากประตู แอสซิสต์ และใบที่ผู้ดูแลบันทึกเป็นเหตุการณ์ ไม่ประมาณสถิติจากสกอร์รวม</p>${table(['นักเตะ','ทีม','ประตู','แอสซิสต์','เหลือง','แดง','เข้าประตูตัวเอง'],playerStats(data.players,data.matches,data.events,data.competition.id).map(p=>[escape(p.name),escape(team(p.team_id)?.name),p.goals,p.assists,p.yellow,p.red,p.own_goals]))}</div>`;
  if(tab==='detail'){

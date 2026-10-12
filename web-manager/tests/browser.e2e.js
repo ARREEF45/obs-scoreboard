@@ -20,6 +20,7 @@ await db.exec(fs.readFileSync('supabase/migrations/005_competition_structure.sql
 await db.exec(fs.readFileSync('supabase/migrations/006_single_group.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/007_delete_competition.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/008_competition_logos.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/009_qualification_standings.sql','utf8'));
 await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
 const seeded = await db.query(
   "insert into fm_teams(name) values('Bangkok FC'),('South United') returning *",

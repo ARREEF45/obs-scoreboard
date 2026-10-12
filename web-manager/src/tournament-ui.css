@@ -1,4 +1,8 @@
 .ui-icon{width:20px;height:20px;flex:none;vertical-align:middle}
+.qualification-row.qualified{background:#e9f8ee}.qualification-row.zone{background:#eef5ff}.qualification-row.tied{background:#fff7e5}
+.qualification-row.qualified td:first-child{border-left:4px solid #15803d}.qualification-row.zone td:first-child{border-left:4px solid #3577ce}.qualification-row.tied td:first-child{border-left:4px solid #be840c}
+.qualification-badge{display:inline-block;font-size:11px;border-radius:20px;padding:4px 9px;white-space:normal;font-weight:500}
+td>.qualification-badge{display:block;width:fit-content;margin-top:5px}.qualification-badge.qualified{background:#ccefd9;color:#126037}.qualification-badge.zone{background:#dceaff;color:#285c9e}.qualification-badge.tied{background:#ffedbd;color:#805600}.qualification-legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
 .team-directory-filters{display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:16px;padding:18px 22px;border:1px solid #dfe6ef;border-radius:14px;background:white}
 .team-directory-filters label{margin:0;color:#596c85;font-size:12px}
 .team-directory-filters input,.team-directory-filters select{margin-top:7px}

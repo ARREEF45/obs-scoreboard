@@ -89,6 +89,7 @@ test("competition hierarchy, season cloning, qualifiers, atomic scheduling and p
       "006_single_group.sql",
       "007_delete_competition.sql",
       "008_competition_logos.sql",
+      "009_qualification_standings.sql",
     ])
       await db.exec(
         fs.readFileSync(
@@ -166,6 +167,12 @@ test("competition hierarchy, season cloning, qualifiers, atomic scheduling and p
       province.id,
       teams.slice(0, 2).map((t) => t.id),
     ]);
+    assert.equal((await db.query('select tournament_state from fm_competitions where id=$1',[province.id])).rows[0].tournament_state.external_qualifiers.length,2);
+    await db.query("select fm_set_public_competition($1,true,'{}')",[province.id]);
+    await db.exec('set role anon');
+    const qualification=(await db.query('select fm_public_competition($1) as p',[province.id])).rows[0].p.competition;
+    assert.equal(qualification.tournament_state.external_qualifiers.length,2);assert.equal(qualification.has_next_stage,true);
+    await db.exec('set role authenticated');
     assert.equal(
       (
         await db.query("select * from fm_entries where competition_id=$1", [
