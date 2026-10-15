@@ -518,3 +518,5 @@ dialog .actions {
 .credit-social a:last-child{color:#58df8a}
 .credit-social a:hover{background:#29465a}
 .credit-social svg{width:24px;height:24px}
+
+.member-permissions{background:#edf5f3;padding:14px;border-radius:10px;font-size:13px;line-height:1.7}.member-list{list-style:none;padding:0;max-height:35vh;overflow:auto}.member-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #dce4ec}.member-list strong{overflow-wrap:anywhere}.member-list small{display:block;color:#64748b}.member-share{display:flex;gap:8px}.member-share input{min-width:0}.member-editor{max-width:620px}.member-editor h2{font-size:20px}.member-list button{flex-shrink:0}

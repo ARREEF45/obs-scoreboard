@@ -23,7 +23,7 @@ const paths={
 };
 export const icon=name=>`<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.trophy}</svg>`;
 const navIcons={dashboard:'dashboard',teams:'teams',players:'players',competitions:'trophy',matches:'calendar',standings:'table',stats:'chart',settings:'settings'};
-const actionIcons={'delete-competition':'trash','entries':'players','publish':'globe','child-competition':'branch','copy-season':'copy','advance-teams':'arrow',refresh:'refresh',logout:'logout',obs:'download'};
+const actionIcons={'members':'players','delete-competition':'trash','entries':'players','publish':'globe','child-competition':'branch','copy-season':'copy','advance-teams':'arrow',refresh:'refresh',logout:'logout',obs:'download'};
 export function actionButton(text,action,id='',cls=''){
  const kind=action==='nav'?navIcons[id]:actionIcons[action]||(action.startsWith('edit-')?(id?'edit':'plus'):null);
  const compact=!!kind&&action!=='nav'&&!(action.startsWith('edit-')&&!id);
