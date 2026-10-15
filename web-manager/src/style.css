@@ -511,3 +511,10 @@ dialog .actions {
 .credit-details strong{font-size:13px;font-weight:600}
 .credit-social{font-size:10px;color:#8af0bd}
 .sidebar-credit a:focus-visible{outline:2px solid #8af0bd;outline-offset:3px}
+
+.sidebar-credit .credit-card{flex-wrap:wrap}
+.credit-social{display:flex;gap:8px;width:100%;padding-left:46px}
+.credit-social a{display:grid;place-items:center;width:44px;height:44px;border:1px solid #345368;border-radius:10px;color:#8ebcff;background:#0b1b2d;transition:background .15s}
+.credit-social a:last-child{color:#58df8a}
+.credit-social a:hover{background:#29465a}
+.credit-social svg{width:24px;height:24px}
