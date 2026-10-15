@@ -497,3 +497,9 @@ dialog .actions {
 .site-footer a{display:inline-block;padding:8px 4px;color:#176b58;text-underline-offset:4px}
 .site-footer a:hover{color:#0b4437}
 .site-footer a:focus-visible{outline:2px solid #176b58;outline-offset:3px;border-radius:4px}
+
+#app-sidebar{display:flex;flex-direction:column;overflow-y:auto}
+#app-sidebar nav{flex-shrink:0}
+#app-sidebar .sidebar-credit{margin-top:auto;padding:24px 8px 0;font-size:13px;color:#a7b9d0}
+.sidebar-credit a{display:block;padding:10px 0;color:#8af0bd;text-underline-offset:4px}
+.sidebar-credit a:focus-visible{outline:2px solid #8af0bd;outline-offset:3px}

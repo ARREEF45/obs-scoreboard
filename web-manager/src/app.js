@@ -175,7 +175,7 @@ function render() {
       )
       .join(
         "",
-      )}</nav><div class="foot">ฐานข้อมูลฟุตบอลของคุณ<br>Supabase · OBS Scoreboard</div></aside><main><button type="button" id="mobile-menu-toggle" class="mobile-menu-toggle" aria-controls="app-sidebar" aria-expanded="false"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>เมนู</button><header><div><h1>${title}</h1><small>จัดการการแข่งขัน เชื่อมข้อมูลทุกอุปกรณ์</small></div><div class="actions"><span class="connection"><i class="status-dot"></i>ซิงค์ ${lastSync}</span>${button("รีเฟรช", "refresh")}${button("ออกจากระบบ", "logout")}</div></header><div id="content">${content()}</div></main></div>`;
+      )}</nav><footer class="sidebar-credit">ผู้จัดทำ <a href="https://www.facebook.com/arif.J04" target="_blank" rel="noopener noreferrer">นายอารีฟ เจะแต</a></footer></aside><main><button type="button" id="mobile-menu-toggle" class="mobile-menu-toggle" aria-controls="app-sidebar" aria-expanded="false"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>เมนู</button><header><div><h1>${title}</h1><small>จัดการการแข่งขัน เชื่อมข้อมูลทุกอุปกรณ์</small></div><div class="actions"><span class="connection"><i class="status-dot"></i>ซิงค์ ${lastSync}</span>${button("รีเฟรช", "refresh")}${button("ออกจากระบบ", "logout")}</div></header><div id="content">${content()}</div></main></div>`;
 }
 function matchRows(list) {
   return table(
