@@ -492,3 +492,8 @@ dialog .actions {
     max-width: 100%;
   }
 }
+
+.site-footer{padding:22px 16px;text-align:center;color:#526477;font-size:14px;border-top:1px solid #dce4ec;background:#f7f9fc}
+.site-footer a{display:inline-block;padding:8px 4px;color:#176b58;text-underline-offset:4px}
+.site-footer a:hover{color:#0b4437}
+.site-footer a:focus-visible{outline:2px solid #176b58;outline-offset:3px;border-radius:4px}
