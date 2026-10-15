@@ -303,6 +303,16 @@ try {
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#app-sidebar').waitFor({state:'hidden'});
+  await page.locator('#mobile-menu-toggle').click();
+  assert.equal(await page.locator('.shell>main').evaluate(el=>el.inert),true);
+  await page.screenshot({path:'artifacts/mobile-sidebar.png',fullPage:true,animations:'disabled'});
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#mobile-menu-toggle').getAttribute('aria-expanded'),'false');
+  await page.locator('#mobile-menu-toggle').click();
+  await page.locator('.sidebar-backdrop').click({position:{x:380,y:400}});
+  assert.equal(await page.locator('.shell>main').evaluate(el=>el.inert),false);
+  await page.locator('#mobile-menu-toggle').click();
   await page.getByRole("button", { name: "ทีมทั้งหมด", exact: true }).click();
   assert.ok(
     await page.evaluate(
@@ -319,6 +329,7 @@ try {
   await page.setViewportSize({width:1440,height:1000});
   await page.screenshot({path:'artifacts/teams-desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});
+  await page.locator('#mobile-menu-toggle').click();
   await page.locator('[data-action="nav"][data-id="competitions"]').click();
   await page.locator('[data-action="edit-competitions"][data-id=""]').click();
   await page.locator('#f-name').fill('IFC LEAGUE');
@@ -355,6 +366,7 @@ try {
   await db.query('insert into fm_entries(competition_id,team_id) select $1,id from fm_teams',[province.id]);
   await page.locator('[data-action="refresh"]').click();
   await page.waitForFunction(()=>!document.querySelector('[data-action="refresh"]').disabled);
+  await page.locator('#mobile-menu-toggle').click();
   await page.locator('[data-action="nav"][data-id="matches"]').click();
   await page.locator('#competition-filter').selectOption(province.id);
   await page.locator('[data-action="schedule"]').click();
@@ -377,6 +389,7 @@ try {
   await page.locator('#modal button[type="submit"]').click();
   await page.locator('#modal').waitFor({state:'hidden'});
   assert.equal((await db.query('select * from fm_matches where competition_id=$1',[province.id])).rows.length,2);
+  await page.locator('#mobile-menu-toggle').click();
   await page.locator('[data-action="nav"][data-id="competitions"]').click();
   const deleting=page.locator('article').filter({has:page.getByRole('heading',{name:'IFC LEAGUE',exact:true})}).filter({hasText:'2569'});
   await deleting.locator('[data-action="delete-competition"]').click();
