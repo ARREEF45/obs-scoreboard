@@ -1,3 +1,5 @@
+import './mobile-sidebar.css';
+import {sidebarOpen,closeSidebar} from './mobile-sidebar.js';
 import {qualificationTable} from './qualification-table.js';
 import {teamDirectory,teamResults} from './team-directory.js';
 import "./style.css";
@@ -121,6 +123,7 @@ async function perform(work) {
   }
 }
 async function refresh(quiet = false) {
+  if(quiet&&sidebarOpen())return;
   if(quiet&&document.activeElement?.id==='team-search')return;
   if (!client || !user) return;
   try {
@@ -161,9 +164,10 @@ function table(headers, rows) {
 }
 function render() {
   if (!user) return;
+  closeSidebar(false);
   const title = view === "match" ? "จัดการแมตช์" : labels[view];
   $("#app").innerHTML =
-    `<div class="shell"><aside><div class="brand">${icon("trophy")}<span>${appName}<small>FOOTBALL TOURNAMENT MANAGER</small></span></div><nav>${Object.entries(
+    `<div class="shell"><button type="button" class="sidebar-backdrop" aria-label="ปิดเมนู" tabindex="-1"></button><aside id="app-sidebar" aria-label="เมนูหลัก"><button type="button" id="mobile-menu-close" class="mobile-menu-close" aria-label="ปิดเมนู">×</button><div class="brand">${icon("trophy")}<span>${appName}<small>FOOTBALL TOURNAMENT MANAGER</small></span></div><nav>${Object.entries(
       labels,
     )
       .map(([key, label]) =>
@@ -171,7 +175,7 @@ function render() {
       )
       .join(
         "",
-      )}</nav><div class="foot">ฐานข้อมูลฟุตบอลของคุณ<br>Supabase · OBS Scoreboard</div></aside><main><header><div><h1>${title}</h1><small>จัดการการแข่งขัน เชื่อมข้อมูลทุกอุปกรณ์</small></div><div class="actions"><span class="connection"><i class="status-dot"></i>ซิงค์ ${lastSync}</span>${button("รีเฟรช", "refresh")}${button("ออกจากระบบ", "logout")}</div></header><div id="content">${content()}</div></main></div>`;
+      )}</nav><div class="foot">ฐานข้อมูลฟุตบอลของคุณ<br>Supabase · OBS Scoreboard</div></aside><main><button type="button" id="mobile-menu-toggle" class="mobile-menu-toggle" aria-controls="app-sidebar" aria-expanded="false"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>เมนู</button><header><div><h1>${title}</h1><small>จัดการการแข่งขัน เชื่อมข้อมูลทุกอุปกรณ์</small></div><div class="actions"><span class="connection"><i class="status-dot"></i>ซิงค์ ${lastSync}</span>${button("รีเฟรช", "refresh")}${button("ออกจากระบบ", "logout")}</div></header><div id="content">${content()}</div></main></div>`;
 }
 function matchRows(list) {
   return table(
@@ -858,6 +862,7 @@ document.addEventListener("change", (e) => {
   }
 });
 function login() {
+  closeSidebar(false);
   const setup = !client;
   $("#app").innerHTML =
     `<div class="auth panel"><div class="brand">${icon("trophy")}<span>${appName}</span></div><h2>${setup ? "เชื่อมต่อฐานข้อมูล" : "เข้าสู่ระบบจัดการแข่งขัน"}</h2><p>${setup ? "ใส่ Project URL และ Publishable key จาก Supabase หลังติดตั้งตารางตามคู่มือ" : "ใช้บัญชีเดียวกันบนคอมและมือถือเพื่อจัดการข้อมูลชุดเดียวกัน"}</p><form id="auth-form">${setup ? input("url", "Supabase Project URL", "", "url", "required") + input("key", "Publishable key", "", "text", "required") : input("email", "อีเมล", "", "email", 'required autocomplete="username"') + input("password", "รหัสผ่าน", "", "password", 'required autocomplete="current-password"')}<button type="submit" class="primary">${setup ? "บันทึกการเชื่อมต่อ" : "เข้าสู่ระบบ"}</button><p class="auth-error" id="auth-error"></p></form><small>${setup ? "ห้ามใช้ service-role หรือ secret key ในหน้าเว็บ" : "บัญชีผู้ใช้สร้างผ่าน Supabase Authentication โดยผู้ดูแล"}</small></div>`;

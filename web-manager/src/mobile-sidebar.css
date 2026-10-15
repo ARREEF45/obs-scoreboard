@@ -1,0 +1,13 @@
+.mobile-menu-toggle,.mobile-menu-close,.sidebar-backdrop{display:none}
+@media(max-width:650px){
+ body.sidebar-open{overflow:hidden}
+ .shell>#app-sidebar{position:fixed;inset:0 auto 0 0;width:min(300px,85vw);height:100dvh;z-index:1002;padding:20px 16px;overflow-y:auto;overscroll-behavior:contain;transform:translateX(-100%);visibility:hidden;transition:transform .2s ease,visibility .2s}
+ body.sidebar-open .shell>#app-sidebar{transform:translateX(0);visibility:visible;box-shadow:12px 0 40px #0003}
+ #app-sidebar nav{display:grid;overflow:visible;gap:7px}
+ #app-sidebar nav button{width:100%;padding:13px 14px;font-size:14px;white-space:normal}
+ #app-sidebar .brand{padding-top:12px}
+ .shell .mobile-menu-close{display:flex;margin-left:auto;width:40px;height:40px;align-items:center;justify-content:center;color:#d4dfed;background:#203247;font-size:24px}
+ .shell .mobile-menu-toggle{display:flex;align-items:center;gap:9px;min-height:44px;margin-bottom:18px;background:#0b1426;color:#fff}
+ body.sidebar-open .sidebar-backdrop{display:block;position:fixed;inset:0;z-index:1001;width:100%;height:100dvh;border-radius:0;background:#0b142699;cursor:default}
+}
+@media(prefers-reduced-motion:reduce){.shell>#app-sidebar{transition:none}}
