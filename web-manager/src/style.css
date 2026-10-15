@@ -500,6 +500,14 @@ dialog .actions {
 
 #app-sidebar{display:flex;flex-direction:column;overflow-y:auto}
 #app-sidebar nav{flex-shrink:0}
-#app-sidebar .sidebar-credit{margin-top:auto;padding:24px 8px 0;font-size:13px;color:#a7b9d0}
-.sidebar-credit a{display:block;padding:10px 0;color:#8af0bd;text-underline-offset:4px}
+#app-sidebar .sidebar-credit{margin-top:auto;padding:24px 0 0;font-size:13px;color:#a7b9d0;flex-shrink:0}
+.sidebar-about{border-top:1px solid #ffffff16;padding:16px 10px 12px;line-height:1.6}
+.sidebar-about small{display:block;font-size:10px;color:#8b9eb5;letter-spacing:.3px}
+.sidebar-credit .credit-card{display:flex;align-items:center;gap:10px;padding:12px 10px;background:#14263a;border:1px solid #294356;border-radius:12px;text-decoration:none;color:#e3f0f5;transition:background .15s,border-color .15s}
+.sidebar-credit .credit-card:hover{background:#1b3447;border-color:#55df9b}
+.credit-avatar{display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:#264c4a;color:#8af0bd;font-weight:700;font-size:13px}
+.credit-details{display:grid;gap:3px;min-width:0}
+.credit-details small{font-size:11px;color:#a7b9d0}
+.credit-details strong{font-size:13px;font-weight:600}
+.credit-social{font-size:10px;color:#8af0bd}
 .sidebar-credit a:focus-visible{outline:2px solid #8af0bd;outline-offset:3px}
