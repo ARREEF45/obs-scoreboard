@@ -1,3 +1,4 @@
+import {memberEditor,signupForm} from './members.js';
 import './mobile-sidebar.css';
 import {sidebarOpen,closeSidebar} from './mobile-sidebar.js';
 import {qualificationTable} from './qualification-table.js';
@@ -75,7 +76,13 @@ const team = (id) => db.teams.find((t) => t.id === id),
   player = (id) => db.players.find((p) => p.id === id),
   match = () => db.matches.find((m) => m.id === matchId),
   comp = () => db.competitions.find((c) => c.id === competition);
-const button = actionButton;
+const button = (label,action,id='',cls='') => {
+ const c=db.competitions.find(c=>c.id===id);
+ if(['members','delete-competition','child-competition','copy-season','publish'].includes(action)&&c&&c.owner_id!==user?.id)return '';
+ if(action==='edit-teams'&&id&&team(id)?.owner_id!==user?.id)return '';
+ if(action==='edit-players'&&id&&player(id)?.owner_id!==user?.id)return '';
+ return actionButton(label,action,id,cls);
+};
 const badge = (s) =>
   `<span class="badge ${s === "live" ? "live" : ""}">${statusLabels[s] || escape(s)}</span>`;
 const date = (s) =>
@@ -127,7 +134,11 @@ async function refresh(quiet = false) {
   if(quiet&&document.activeElement?.id==='team-search')return;
   if (!client || !user) return;
   try {
+    const loadingUser=user.id;
+    const {error:inviteError}=await client.rpc('fm_accept_competition_invites');
+    if(inviteError&&inviteError.code!=='PGRST202')throw inviteError;
     const next = await fetchAll();
+    if(user?.id!==loadingUser)return;
     db = next;
     await Promise.all(
       db.teams.map(async (t) => {
@@ -225,7 +236,7 @@ function content() {
         button("แก้ไข", "edit-players", p.id),
       ]),
     )}</div>`;
-  if (view === "competitions") return competitionList(db,button);
+  if (view === "competitions") return competitionList(db,button,user.id);
   if (view === "matches")
     return `<div class="panel"><div class="toolbar">${chooseCompetition()}<div class="actions">${button("สร้างโปรแกรม / รอบถัดไป", "schedule")}${button("+ เพิ่มแมตช์", "edit-matches", "", "primary")}</div></div>${matchRows(db.matches.filter((m) => !competition || m.competition_id === competition))}</div>`;
   if (view === "standings") {
@@ -380,7 +391,7 @@ function edit(tableName, id) {
       `<label><input name="archived" type="checkbox" ${r.archived ? "checked" : ""}> เก็บทีมถาวร</label>`;
   if (tableName === "players")
     fields =
-      select("team_id", "ทีม", db.teams, r.team_id) +
+      select("team_id", "ทีม", db.teams.filter(t=>t.owner_id===user.id), r.team_id) +
       input("name", "ชื่อนักเตะ", r.name, "text", "required") +
       input("number", "เบอร์", r.number) +
       select(
@@ -483,7 +494,9 @@ function edit(tableName, id) {
         delete data.competition_logo;delete data.clear_competition_logo;
         data.logo_data=f.has('clear_competition_logo')?'':r.logo_data||'';
         if(file?.size)data.logo_data=await competitionLogo(file);
+        if(old&&old.owner_id!==user.id)Object.assign(data,{parent_id:r.parent_id,advance_to:r.advance_to,season:r.season,recurrence:r.series_key?'recurring':'once'});
         data=competitions.payload(data,r);
+        if(old&&old.owner_id!==user.id)Object.assign(data,{parent_id:r.parent_id,advance_to:r.advance_to,season:r.season,series_key:r.series_key});
         for (const key of ["win_points", "draw_points", "loss_points"])
           data[key] = Number(data[key]);
       }
@@ -499,6 +512,7 @@ function edit(tableName, id) {
     },
   );
   if(tableName==='competitions'){
+    if(old&&old.owner_id!==user.id)for(const name of ['parent_id','advance_to','recurrence','season'])$('#modal-form [name="'+name+'"]').disabled=true;
     $('#f-competition_logo').onchange=async e=>{
       const file=e.target.files[0];if(!file){$('#competition-logo-preview').innerHTML=competitionCrest(r);return;}
       try{const logo_data=await competitionLogo(file);$('#competition-logo-preview').innerHTML=competitionCrest({...r,logo_data});}catch(error){notify(error.message,true);e.target.value='';$('#competition-logo-preview').innerHTML=competitionCrest(r);}
@@ -520,7 +534,7 @@ function entryEditor(id) {
   modal(
     "ทีมที่เข้าร่วม",
     `<div class="checklist">${db.teams
-      .filter((t) => !t.archived || selected.some((e) => e.team_id === t.id))
+      .filter((t) => t.owner_id===db.competitions.find(c=>c.id===id)?.owner_id && (!t.archived || selected.some((e) => e.team_id === t.id)))
       .map(
         (t) =>
           `<label><input type="checkbox" name="teams" value="${t.id}" ${selected.some((e) => e.team_id === t.id) ? "checked" : ""}> ${escape(t.name)}</label>`,
@@ -794,6 +808,7 @@ document.addEventListener("click", (e) => {
       edit(a.slice(5), id);
       return;
     }
+    if(a==='members'){perform(()=>memberEditor(client,db.competitions.find(c=>c.id===id)));return;}
     if (a === "entries") {
       entryEditor(id);
       return;
@@ -861,12 +876,15 @@ document.addEventListener("change", (e) => {
     render();
   }
 });
+function signup(){signupForm(client,login,async newUser=>{user=newUser;await refresh();startPolling();});}
 function login() {
   closeSidebar(false);
+  $('#modal').close();
   const setup = !client;
   $("#app").innerHTML =
-    `<div class="auth panel"><div class="brand">${icon("trophy")}<span>${appName}</span></div><h2>${setup ? "เชื่อมต่อฐานข้อมูล" : "เข้าสู่ระบบจัดการแข่งขัน"}</h2><p>${setup ? "ใส่ Project URL และ Publishable key จาก Supabase หลังติดตั้งตารางตามคู่มือ" : "ใช้บัญชีเดียวกันบนคอมและมือถือเพื่อจัดการข้อมูลชุดเดียวกัน"}</p><form id="auth-form">${setup ? input("url", "Supabase Project URL", "", "url", "required") + input("key", "Publishable key", "", "text", "required") : input("email", "อีเมล", "", "email", 'required autocomplete="username"') + input("password", "รหัสผ่าน", "", "password", 'required autocomplete="current-password"')}<button type="submit" class="primary">${setup ? "บันทึกการเชื่อมต่อ" : "เข้าสู่ระบบ"}</button><p class="auth-error" id="auth-error"></p></form><small>${setup ? "ห้ามใช้ service-role หรือ secret key ในหน้าเว็บ" : "บัญชีผู้ใช้สร้างผ่าน Supabase Authentication โดยผู้ดูแล"}</small></div>`;
+    `<div class="auth panel"><div class="brand">${icon("trophy")}<span>${appName}</span></div><h2>${setup ? "เชื่อมต่อฐานข้อมูล" : "เข้าสู่ระบบจัดการแข่งขัน"}</h2><p>${setup ? "ใส่ Project URL และ Publishable key จาก Supabase หลังติดตั้งตารางตามคู่มือ" : "ใช้บัญชีเดียวกันบนคอมและมือถือเพื่อจัดการข้อมูลชุดเดียวกัน"}</p><form id="auth-form">${setup ? input("url", "Supabase Project URL", "", "url", "required") + input("key", "Publishable key", "", "text", "required") : input("email", "อีเมล", "", "email", 'required autocomplete="username"') + input("password", "รหัสผ่าน", "", "password", 'required autocomplete="current-password"')}<button type="submit" class="primary">${setup ? "บันทึกการเชื่อมต่อ" : "เข้าสู่ระบบ"}</button><p class="auth-error" id="auth-error"></p></form><small>${setup ? "ห้ามใช้ service-role หรือ secret key ในหน้าเว็บ" : "สมัครสมาชิกและยืนยันอีเมลก่อนเข้าใช้งาน"}</small></div>`;
   if (!setup) {
+    const signupButton=document.createElement('button');signupButton.type='button';signupButton.id='open-signup';signupButton.textContent='สมัครสมาชิก';signupButton.onclick=signup;$('#auth-form').after(signupButton);
     const reset = document.createElement("button");
     reset.type = "button";
     reset.textContent = "ลืมรหัสผ่าน / ตั้งรหัสผ่านใหม่";
@@ -886,7 +904,7 @@ function login() {
         });
         if (error) {
           const reasons = {
-            invalid_credentials: "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่มีบัญชีในระบบนี้ ให้ผู้ดูแลตรวจใน Supabase → Authentication → Users (บัญชีเข้าเว็บ Supabase/GitHub ไม่ใช่บัญชีของระบบนี้)",
+            invalid_credentials: "อีเมลหรือรหัสผ่านไม่ถูกต้อง หากยังไม่มีบัญชีให้กดสมัครสมาชิก หรือใช้ลืมรหัสผ่านเพื่อตั้งรหัสผ่านใหม่",
             email_not_confirmed: "บัญชีนี้ยังไม่ได้ยืนยันอีเมล กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ",
             user_banned: "บัญชีนี้ถูกระงับ กรุณาติดต่อผู้ดูแล",
             over_request_rate_limit: "ลองเข้าสู่ระบบถี่เกินไป กรุณารอสักครู่แล้วลองใหม่",
@@ -925,6 +943,7 @@ async function start() {
     }
     if (event === "SIGNED_OUT") {
       user = null;
+      db=Object.fromEntries(Object.keys(db).map(k=>[k,[]]));logos.clear();competition="";matchId="";view="dashboard";
       clearInterval(timer);
       login();
     }
@@ -936,6 +955,7 @@ async function start() {
   }
   user = data.session?.user;
   if (!user) {
+    if(new URLSearchParams(location.search).get("signup")==="1"){signup();return;}
     login();
     return;
   }

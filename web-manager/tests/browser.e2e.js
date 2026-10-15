@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 const db = new PGlite(),
   owner = "00000000-0000-4000-8000-000000000001";
 await db.exec(
-  `create role authenticated;create role anon;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;insert into auth.users values('${owner}');`,
+  `create role authenticated;create role anon;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;insert into auth.users values('${owner}','owner@example.com',now());`,
 );
 await db.exec(
   fs.readFileSync("supabase/migrations/001_football_manager.sql", "utf8"),
@@ -21,6 +21,7 @@ await db.exec(fs.readFileSync('supabase/migrations/006_single_group.sql','utf8')
 await db.exec(fs.readFileSync('supabase/migrations/007_delete_competition.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/008_competition_logos.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/009_qualification_standings.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/010_competition_members.sql','utf8'));
 await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
 const seeded = await db.query(
   "insert into fm_teams(name) values('Bangkok FC'),('South United') returning *",
@@ -62,6 +63,11 @@ const server = http.createServer(async (req, res) => {
   }
   try {
     if (route.startsWith("/auth/v1/")) {
+      if(route==='/auth/v1/signup'){
+        let text='';for await(const chunk of req)text+=chunk;
+        const body=JSON.parse(text);assert.equal(body.email,'new@example.com');assert.ok(body.password.length>=8);
+        res.setHeader('Content-Type','application/json');res.end(JSON.stringify({id:owner,email:body.email,identities:[]}));return;
+      }
       const payload = {
         sub: owner,
         role: "authenticated",
@@ -96,18 +102,18 @@ const server = http.createServer(async (req, res) => {
       let rows;
       if (route.includes("/rpc/")) {
         const name = path.basename(route);
-        assert.ok(["fm_save_lineup", "fm_import_team", "fm_copy_season", "fm_save_schedule", "fm_advance_teams", "fm_competition_delete_preview", "fm_delete_competition"].includes(name));
-        const names = Object.keys(body);
+        assert.ok(["fm_accept_competition_invites","fm_list_competition_members","fm_add_competition_member","fm_remove_competition_member","fm_save_lineup", "fm_import_team", "fm_copy_season", "fm_save_schedule", "fm_advance_teams", "fm_competition_delete_preview", "fm_delete_competition"].includes(name));
+        const names = Object.keys(body||{});
         const args = names.map((name, i) => `${name} := $${i + 1}`).join(",");
         rows = (
           await db.query(
             `select public.${name}(${args})`,
-            Object.values(body).map((v) =>
-              typeof v === "object" && !(name==='fm_advance_teams'&&Array.isArray(v)) ? JSON.stringify(v) : v,
+            Object.values(body||{}).map((v) =>
+              v!==null && typeof v === "object" && !(name==='fm_advance_teams'&&Array.isArray(v)) ? JSON.stringify(v) : v,
             ),
           )
         ).rows;
-        if(name==='fm_competition_delete_preview')rows=rows[0][name];
+        if(['fm_competition_delete_preview','fm_list_competition_members','fm_add_competition_member'].includes(name))rows=rows[0][name];
       } else {
         const table = path.basename(route);
         assert.match(
@@ -233,6 +239,14 @@ try {
     { url: base, key: "sb_publishable_test" },
   );
   await page.goto(base);
+  await page.locator('#open-signup').click();
+  await page.locator('#signup-email').fill('new@example.com');
+  await page.locator('#signup-password').fill('test-password');
+  await page.locator('#signup-confirm').fill('test-password');
+  await page.locator('#signup-form button').click();
+  await page.locator('#signup-form').waitFor({state:'hidden'});
+  assert.match(await page.locator('#signup-status').textContent(),/ยืนยันบัญชี/);
+  await page.locator('#back-login').click();
   await page.getByLabel("อีเมล").fill("admin@test.local");
   await page.getByLabel("รหัสผ่าน").fill("test-password");
   await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
@@ -331,6 +345,12 @@ try {
   await page.setViewportSize({width:390,height:844});
   await page.locator('#mobile-menu-toggle').click();
   await page.locator('[data-action="nav"][data-id="competitions"]').click();
+  await page.locator('[data-action="members"]').first().click();
+  await page.locator('#member-email').fill('new.member@example.com');
+  await page.locator('#member-form button[type="submit"]').click();
+  await page.locator('[data-remove-email="new.member@example.com"]').waitFor();
+  assert.equal((await db.query('select fm_list_competition_members($1) as data',[cup.id])).rows[0].data.pending.length,1);
+  await page.locator('#modal [data-action="close"]').click();
   await page.locator('[data-action="edit-competitions"][data-id=""]').click();
   await page.locator('#f-name').fill('IFC LEAGUE');
   const logo=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=64;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#167657';ctx.fillRect(0,0,64,64);ctx.fillStyle='white';ctx.font='bold 20px sans-serif';ctx.fillText('IFC',12,40);return c.toDataURL('image/png').split(',')[1];});
